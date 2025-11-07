@@ -10,18 +10,22 @@ Production-ready meta-skill for creating Claude Code skills with evaluation-driv
 
 ## Quick Start (Claude Code CLI)
 
+**Step 1**: Download the latest [Release ZIP](https://github.com/DaronVee/ccgg-skills-factory/releases)
+
+**Step 2**: Extract and install
+
 ```bash
-# Install to personal skills (available everywhere)
-git clone https://github.com/DaronVee/ccgg-skills-factory.git
 cd ccgg-skills-factory
 python skills-factory/scripts/package_skill.py skills-factory --install personal
 
-# Verify installation
+# Verify
 ls ~/.claude/skills/skills-factory/SKILL.md
 
-# Start using
-# Open Claude Code, say: "Create a new skill for [your use case]"
+# Start using - Open Claude Code and say:
+# "Create a new skill for [your use case]"
 ```
+
+**Prefer Git?** Clone instead: `git clone https://github.com/DaronVee/ccgg-skills-factory.git` then run install command
 
 ---
 
@@ -29,9 +33,9 @@ ls ~/.claude/skills/skills-factory/SKILL.md
 
 | Platform | Installation | Script Execution | Requirements |
 |----------|-------------|------------------|--------------|
-| **Claude Code (CLI)** | Filesystem (`~/.claude/skills/`) | ✅ Local environment | Python 3.x installed |
-| **Claude Desktop** | ZIP upload via Settings | ✅ Server-side sandbox | "Code execution" enabled in Settings > Capabilities |
-| **Claude.ai (Web)** | ZIP upload via Settings | ✅ Server-side sandbox | "Code execution" enabled in Settings > Capabilities |
+| **Claude Code (CLI)** | Download ZIP + install | ✅ Local environment | Python 3.x installed |
+| **Claude Desktop** | Download ZIP + upload | ✅ Server-side sandbox | "Code execution" enabled in Settings > Capabilities |
+| **Claude.ai (Web)** | Download ZIP + upload | ✅ Server-side sandbox | "Code execution" enabled in Settings > Capabilities |
 
 **All platforms support full functionality!** Scripts execute in secure sandboxes (Desktop/Web) or your local environment (Claude Code).
 
@@ -75,9 +79,11 @@ ls ~/.claude/skills/skills-factory/SKILL.md
 
 ### Option 1: Claude Code CLI (Recommended for Power Users)
 
+**Download**: Get the latest [Release ZIP](https://github.com/DaronVee/ccgg-skills-factory/releases) or clone with Git
+
 **Personal Installation** (skill available across all projects):
 ```bash
-git clone https://github.com/DaronVee/ccgg-skills-factory.git
+# Extract ZIP or clone, then:
 cd ccgg-skills-factory
 python skills-factory/scripts/package_skill.py skills-factory --install personal
 ```
@@ -95,31 +101,18 @@ git push
 
 ### Option 2: Claude Desktop / Web (Easiest for Beginners)
 
-**Step 1**: Package skill to ZIP
-```bash
-cd ccgg-skills-factory/skills-factory
-python scripts/package_skill.py skills-factory --package
-# Creates: skills-factory.zip
-```
+**The ZIP in releases is already packaged!** Just download and upload directly:
 
-**Step 2**: Upload to Claude
-- **Desktop**: Settings > Features > Skills > Upload Skill
-- **Web**: Settings (gear icon) > Features > Skills > Upload Skill
-- Select `skills-factory.zip`
-
-**Step 3**: Enable code execution
-- Settings > Capabilities > Toggle ON "Code execution and file creation"
-
-**Step 4**: Verify
-- Start new conversation
-- Ask: "What skills are available?"
-- Should see "skills-factory" in response
-
-### Option 3: Download Release (No Git Required)
-
-1. Go to [Releases](https://github.com/DaronVee/ccgg-skills-factory/releases)
-2. Download `skills-factory.zip` from latest release
-3. Follow Option 2 steps above (upload to Desktop/Web)
+1. Download `skills-factory.zip` from [Releases](https://github.com/DaronVee/ccgg-skills-factory/releases)
+2. Upload to Claude:
+   - **Desktop**: Settings > Features > Skills > Upload Skill
+   - **Web**: Settings (gear icon) > Features > Skills > Upload Skill
+3. Enable code execution:
+   - Settings > Capabilities > Toggle ON "Code execution and file creation"
+4. Verify:
+   - Start new conversation
+   - Ask: "What skills are available?"
+   - Should see "skills-factory" in response
 
 ---
 
@@ -248,4 +241,4 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-**Ready to create your first skill?** Clone this repo and run the Quick Start commands above!
+**Ready to create your first skill?** Download the [latest release](https://github.com/DaronVee/ccgg-skills-factory/releases) and follow the Quick Start above!
