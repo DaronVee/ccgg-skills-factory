@@ -105,8 +105,57 @@ description: |            # Required: max 1024 chars, include trigger terms
   Clear, specific description of what this skill does.
   Include key terms that should trigger the skill.
   Focus on capabilities and use cases.
+allowed-tools:            # Optional: Pre-approved tools list (Claude Code only)
+  - Read
+  - Grep
+  - Glob
+metadata:                 # Optional: Custom key-value pairs for tracking
+  author: "TeamName"
+  version: "1.0.0"
+  category: "data-processing"
 ---
 ```
+
+**Optional YAML Fields:**
+
+**`allowed-tools`** (Claude Code only):
+- **Purpose**: Restricts which tools Claude can use when this skill is active
+- **Format**: YAML list of tool names
+- **Use Cases**:
+  - Read-only skills (prevent file modification): `[Read, Grep, Glob]`
+  - Security-sensitive workflows (limit tool scope)
+  - Data analysis only (no write/execute permissions)
+- **Known Tools**: Read, Write, Edit, Grep, Glob, Bash, Task, SlashCommand, Skill
+- **Example**:
+  ```yaml
+  ---
+  name: safe-file-reader
+  description: Read and analyze files without making changes
+  allowed-tools: [Read, Grep, Glob]
+  ---
+  ```
+
+**`metadata`** (All platforms):
+- **Purpose**: Store custom key-value pairs for tracking and categorization
+- **Format**: YAML dictionary (string keys → string values)
+- **Use Cases**:
+  - Version tracking: `{version: "2.1.0"}`
+  - Team ownership: `{author: "TeamName", contact: "team@example.com"}`
+  - Categorization: `{category: "content-creation", domain: "marketing"}`
+  - Custom tracking IDs: `{internal-id: "SKILL-12345"}`
+- **Best Practice**: Use unique key names to avoid conflicts with other tools
+- **Example**:
+  ```yaml
+  ---
+  name: pdf-processor
+  description: Extract text and tables from PDF files
+  metadata:
+    author: "ContentTeam"
+    version: "2.1.0"
+    category: "document-processing"
+    last-updated: "2025-11-22"
+  ---
+  ```
 
 **SKILL.md Body Guidelines:**
 - Start with clear "About" section explaining purpose

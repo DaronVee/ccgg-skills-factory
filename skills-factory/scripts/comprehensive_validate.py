@@ -138,6 +138,64 @@ class SkillValidator:
         if 'TODO' in frontmatter:
             self.errors.append("[ERROR] Found TODO markers in YAML frontmatter - replace with actual content")
 
+        # Validate allowed-tools (optional field)
+        if 'allowed-tools:' in frontmatter:
+            # Extract allowed-tools value
+            tools_match = re.search(r'allowed-tools:\s*\[(.*?)\]', frontmatter, re.DOTALL)
+            if tools_match:
+                tools_str = tools_match.group(1).strip()
+                # Parse tool names (handle quotes, spaces, commas)
+                tools = [t.strip().strip('"').strip("'") for t in tools_str.split(',') if t.strip()]
+
+                # Known Claude Code tools (as of 2025-11-22)
+                valid_tools = ['Read', 'Write', 'Edit', 'Grep', 'Glob', 'Bash', 'Task', 'SlashCommand', 'Skill']
+
+                for tool in tools:
+                    if tool not in valid_tools:
+                        self.warnings.append(
+                            f"[WARNING] allowed-tools contains unknown tool '{tool}'. "
+                            f"Verify spelling or check if this is a new Claude Code tool. "
+                            f"Known tools: {', '.join(valid_tools)}"
+                        )
+            else:
+                # Check if it's a multiline list format
+                tools_multiline = re.search(r'allowed-tools:\s*\n((?:\s+-\s+\w+\n?)+)', frontmatter)
+                if tools_multiline:
+                    tools_lines = tools_multiline.group(1).strip().split('\n')
+                    tools = [re.search(r'-\s+(\w+)', line).group(1) for line in tools_lines if re.search(r'-\s+(\w+)', line)]
+
+                    valid_tools = ['Read', 'Write', 'Edit', 'Grep', 'Glob', 'Bash', 'Task', 'SlashCommand', 'Skill']
+
+                    for tool in tools:
+                        if tool not in valid_tools:
+                            self.warnings.append(
+                                f"[WARNING] allowed-tools contains unknown tool '{tool}'. "
+                                f"Verify spelling or check if this is a new Claude Code tool. "
+                                f"Known tools: {', '.join(valid_tools)}"
+                            )
+                else:
+                    self.errors.append("[ERROR] allowed-tools format invalid - must be YAML list (e.g., [Read, Grep, Glob] or multiline)")
+
+        # Validate metadata (optional field)
+        if 'metadata:' in frontmatter:
+            # Extract metadata block
+            metadata_match = re.search(r'metadata:\s*\n((?:\s+\w+:\s*.+\n?)+)', frontmatter)
+            if metadata_match:
+                metadata_block = metadata_match.group(1)
+                # Check each key-value pair is valid format
+                metadata_lines = [line.strip() for line in metadata_block.split('\n') if line.strip()]
+                for line in metadata_lines:
+                    if not re.match(r'^\w+:\s*.+$', line):
+                        self.errors.append(
+                            f"[ERROR] metadata entry invalid format: '{line}' "
+                            "(must be 'key: value')"
+                        )
+            else:
+                # Check if it's inline dict format
+                inline_match = re.search(r'metadata:\s*\{(.+?)\}', frontmatter)
+                if not inline_match:
+                    self.errors.append("[ERROR] metadata format invalid - must be YAML dictionary (key: value pairs)")
+
     def validate_naming_conventions(self):
         """Validate skill name follows conventions."""
         if not self.yaml_name:
