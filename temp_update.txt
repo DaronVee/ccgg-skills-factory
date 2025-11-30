@@ -1,0 +1,17 @@
+## Quick Start (Claude Code CLI)
+
+**Download**: Get the latest release ZIP from [Releases](https://github.com/DaronVee/ccgg-skills-factory/releases)
+
+```bash
+# Extract ZIP, then install
+cd ccgg-skills-factory
+python skills-factory/scripts/package_skill.py skills-factory --install personal
+
+# Verify installation
+ls ~/.claude/skills/skills-factory/SKILL.md
+
+# Start using
+# Open Claude Code, say: "Create a new skill for [your use case]"
+```
+
+**Alternative (with Git)**: `git clone https://github.com/DaronVee/ccgg-skills-factory.git` then run install command above
