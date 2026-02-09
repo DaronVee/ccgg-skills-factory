@@ -118,7 +118,7 @@ Skills Factory guides you to the right architecture for your use case.
 
 ---
 
-### Can Scripts Factory create skills for Desktop/Web?
+### Can Skills Factory create skills for Desktop/Web?
 
 **Yes!** Skills created by Skills Factory work on ALL platforms:
 - Claude Code (CLI)
@@ -286,22 +286,25 @@ ZIP is in: `ccgg-skills-factory/skills-factory/skills-factory.zip`
 
 ---
 
-### What are the "12+ validation checks"?
+### What are the "15+ validation checks"?
 
 **Comprehensive validation checks**:
 1. YAML frontmatter structure
-2. Required sections present
-3. Progressive disclosure formatting
-4. Code block syntax
-5. Cross-references valid
-6. Placeholder detection
-7. Section completeness
-8. Instruction clarity
-9. Example formatting
-10. Edge case coverage
-11. Error handling patterns
-12. Documentation completeness
-13. + more
+2. New frontmatter fields (disable-model-invocation, context, agent, model, etc.)
+3. Required sections present
+4. Progressive disclosure formatting
+5. Code block syntax
+6. Cross-references valid
+7. Placeholder detection
+8. Section completeness
+9. Instruction clarity
+10. Example formatting
+11. Edge case coverage
+12. Error handling patterns
+13. Documentation completeness
+14. Allowed-tools format validation (comma-separated, Bash argument patterns)
+15. Context: fork content validation (task instructions present)
+16. + more
 
 **Run it**: `python scripts/comprehensive_validate.py your-skill`
 

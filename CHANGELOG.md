@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2026-02-09 - Full Feature Alignment
+
+### Added
+- **FRONTMATTER_DECISION_GUIDE.md**: 6-question intelligent configuration wizard for YAML frontmatter
+- **SUBAGENT_PATTERNS.md**: Bidirectional skill/subagent integration patterns (context: fork + skills field)
+- **Complete YAML frontmatter reference** (11 fields): name, description, disable-model-invocation, user-invocable, context, agent, model, argument-hint, allowed-tools, hooks, metadata
+- **Invocation Control matrix**: decision table for disable-model-invocation vs user-invocable
+- **String Substitutions**: $ARGUMENTS, $N, ${CLAUDE_SESSION_ID}
+- **Dynamic Context Injection**: !`command` syntax for live shell data
+- **Advanced Patterns**: ultrathink keyword, character budget management, forked context workflow
+- **3 new troubleshooting issues**: #13 budget exceeded, #14 unwanted triggers, #15 fork failures
+- **Fork evaluation scenarios** in EVALUATION_GUIDE.md
+- **Pattern 5: Forked Context Workflow** in WORKFLOW_PATTERNS.md
+- **Deployment Guide additions**: nested directory auto-discovery, --add-dir support, expanded plugin namespacing
+
+### Changed
+- **SKILL.md** rewritten: Step 2 now triggers Frontmatter Decision Guide (MANDATORY)
+- **comprehensive_validate.py**: recognizes all new fields, validates context: fork content, supports comma-separated allowed-tools (official format)
+- **init_skill.py**: template includes commented optional fields with guide reference, name length 40 -> 64
+
+### Fixed
+- **Priority resolution order**: was "project > personal" (WRONG), now "enterprise > personal > project" (CORRECT)
+- **Name max length**: was "40 chars", now "64 chars" (per official docs)
+- **Removed SlashCommand** from valid tools list (deprecated)
+
+---
+
 ## [1.1.0] - 2025-11-07 - CCGG Community Edition
 
 ### Added
@@ -58,11 +85,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Upcoming
 
-### [1.2.0] - Future
-- **Example Skills**: Pre-built skills demonstrating patterns
-- **Video Tutorials**: Installation and usage walkthroughs
-- **Skill Templates**: Starter templates for common use cases
-- **Enhanced Validation**: Additional checks for edge cases
+### [2.1.0] - Future
+- **Example Skills**: Pre-built skills demonstrating each pattern (simple, standard, forked, subagent)
+- **Hooks Integration**: Deeper hooks validation and generation in skill creation workflow
+- **Plugin Packaging**: Automated plugin creation from skill collections
+- **Agent Skills Standard**: agentskills.io compatibility layer
 
 ---
 

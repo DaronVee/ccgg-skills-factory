@@ -44,21 +44,23 @@ ls ~/.claude/skills/skills-factory/SKILL.md
 ## What's Included
 
 ### Core Skill
-- **SKILL.md** (11.5 KB): Main skill file with progressive disclosure, evaluation-driven development framework, and comprehensive guidance
+- **SKILL.md** (~19 KB): Main skill file with intelligent frontmatter configuration, progressive disclosure, evaluation-driven development framework, and comprehensive guidance
 
 ### Automation Scripts (4 Python files)
-- **comprehensive_validate.py** (514 lines): Deep validation with 12+ checks (YAML structure, section completeness, code patterns, progressive disclosure, etc.)
-- **init_skill.py** (376 lines): Skill generator with template creation and structure scaffolding
+- **comprehensive_validate.py** (~700 lines): Deep validation with 15+ checks (YAML structure, new frontmatter fields, invocation control, code patterns, progressive disclosure, etc.)
+- **init_skill.py** (~390 lines): Skill generator with template creation, commented optional fields, and structure scaffolding
 - **package_skill.py** (235 lines): Packager/installer for personal, project, and distribution deployment
 - **quick_validate.py** (65 lines): Fast validation for iterative development
 
-### Reference Guides (6 comprehensive docs)
-- **DEPLOYMENT_GUIDE.md** (4,000+ words): Complete deployment workflows for personal, project, and organization distribution
-- **EVALUATION_GUIDE.md**: Evaluation-driven development methodology
-- **TROUBLESHOOTING.md** (930 lines): 12 common issues with detailed solutions
+### Reference Guides (8 comprehensive docs)
+- **FRONTMATTER_DECISION_GUIDE.md**: 6-question intelligent configuration wizard for YAML frontmatter fields
+- **SUBAGENT_PATTERNS.md**: Bidirectional skill/subagent integration patterns (context: fork + skills field)
+- **DEPLOYMENT_GUIDE.md** (6,000+ words): Complete deployment workflows including nested discovery, --add-dir, and plugin namespacing
+- **EVALUATION_GUIDE.md**: Evaluation-driven development methodology with fork evaluation scenarios
+- **TROUBLESHOOTING.md**: 15 common issues with detailed solutions
 - **TWO_CLAUDE_METHODOLOGY.md**: Iterative testing framework using two Claude instances
 - **VALIDATION_PATTERNS.md**: Feedback loop patterns and quality gates
-- **WORKFLOW_PATTERNS.md**: Design patterns for skill creation (simple, standard, complex architectures)
+- **WORKFLOW_PATTERNS.md**: Design patterns for skill creation (simple, standard, complex, forked context)
 
 ---
 
@@ -124,9 +126,11 @@ git push
 - [Platform Compatibility](docs/PLATFORM_COMPATIBILITY.md) - Detailed platform comparison
 
 ### For Advanced Users
+- [Frontmatter Decision Guide](skills-factory/references/FRONTMATTER_DECISION_GUIDE.md) - Intelligent YAML configuration wizard
+- [Subagent Patterns](skills-factory/references/SUBAGENT_PATTERNS.md) - Skill/subagent integration patterns
 - [Deployment Guide](skills-factory/references/DEPLOYMENT_GUIDE.md) - Complete deployment workflows
 - [Evaluation Guide](skills-factory/references/EVALUATION_GUIDE.md) - Evaluation-driven development
-- [Troubleshooting](skills-factory/references/TROUBLESHOOTING.md) - 12 common issues + solutions
+- [Troubleshooting](skills-factory/references/TROUBLESHOOTING.md) - 15 common issues + solutions
 
 ---
 
@@ -149,15 +153,30 @@ Build skills iteratively with continuous validation:
 ### Comprehensive Validation
 Four validation levels ensure quality:
 - **Quick Validate**: Fast syntax + structure checks
-- **Comprehensive Validate**: Deep analysis (12+ checks)
+- **Comprehensive Validate**: Deep analysis (15+ checks including new frontmatter fields)
 - **Two-Claude Testing**: Real-world usage testing
 - **Production Readiness**: Final quality gates
+
+### Intelligent Frontmatter Configuration
+6-question decision guide that determines the right YAML configuration:
+- **Invocation Control**: Who triggers the skill (user, Claude, or both)?
+- **Execution Context**: Main conversation or isolated subagent (context: fork)?
+- **Arguments**: Does the skill accept parameters ($ARGUMENTS, $0, $1)?
+- **Tool Access**: Should tools be restricted (allowed-tools)?
+- **Dynamic Data**: Does the skill need live shell data (!`command`)?
+- **Hooks**: Pre/post execution validation needed?
+
+### Subagent Integration
+Two patterns for skill/subagent interaction:
+- **Pattern A**: Skill spawns subagent (`context: fork`) - for context protection, parallel execution, tool restriction
+- **Pattern B**: Subagent uses skills (`skills` field) - for domain-specific agents with preloaded knowledge
 
 ### Design Patterns
 Pre-built architectures for common use cases:
 - **Simple Skills**: Single-purpose, minimal complexity
 - **Standard Skills**: Multi-section, moderate complexity
 - **Complex Skills**: Advanced patterns with subagents, hooks, multi-file support
+- **Forked Context**: Isolated execution for heavy research or parallel tasks
 
 ---
 
@@ -223,7 +242,7 @@ This is a CCGG community resource. Contributions welcome!
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-**Current**: v1.1.0 - CCGG Community Edition (2025-11-07)
+**Current**: v2.0.0 - Full Feature Alignment (2026-02-09)
 
 ---
 
