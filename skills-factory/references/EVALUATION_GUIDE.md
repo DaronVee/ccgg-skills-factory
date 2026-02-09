@@ -330,6 +330,51 @@ Before calling your skill "done," verify:
 - [ ] At least 3 quantitative metrics improved
 - [ ] Documentation reflects actual behavior (not aspirational)
 
+## Additional Evaluation Scenarios for Advanced Features
+
+### Evaluating `context: fork` Skills
+
+Forked skills require extra evaluation because they run in isolation:
+
+**Scenario: Fork Context Isolation**
+- **Setup:** Skill with `context: fork` and `agent: Explore`
+- **Task:** User provides context in conversation, then invokes forked skill
+- **Expected:** Subagent completes task using ONLY skill body (no conversation history)
+- **Key Checks:**
+  - [ ] Skill body contains sufficient instructions (not just reference material)
+  - [ ] Subagent produces actionable output without needing conversation context
+  - [ ] Summary returned to main conversation is useful and concise
+  - [ ] Heavy research output stays in subagent context (main context not bloated)
+
+**Scenario: Fork with Arguments**
+- **Setup:** Forked skill using `$ARGUMENTS`
+- **Task:** User invokes `/skill-name specific-query`
+- **Expected:** Arguments properly substituted, subagent acts on them
+- **Key Checks:**
+  - [ ] `$ARGUMENTS` correctly replaced in skill body
+  - [ ] Subagent understands and acts on the argument
+  - [ ] Result is specific to the argument (not generic)
+
+### Evaluating `disable-model-invocation` Skills
+
+**Scenario: No Auto-Trigger**
+- **Setup:** Skill with `disable-model-invocation: true`
+- **Task:** User asks about topic that matches skill description
+- **Expected:** Claude does NOT auto-invoke the skill
+- **Key Checks:**
+  - [ ] Skill is NOT loaded when user discusses related topics
+  - [ ] Skill IS available when user explicitly types `/skill-name`
+  - [ ] Description is NOT consuming context budget
+
+**Scenario: Manual Invocation Works**
+- **Setup:** Same skill with `disable-model-invocation: true`
+- **Task:** User explicitly invokes `/skill-name`
+- **Expected:** Skill loads and functions correctly
+- **Key Checks:**
+  - [ ] Full skill content loads on explicit invocation
+  - [ ] Workflow functions as expected
+  - [ ] Side effects execute safely with user confirmation
+
 ---
 
 **Remember:** Evaluations aren't bureaucracy—they're your defense against building the wrong thing. Start with evaluations, build minimally, let data drive expansion.

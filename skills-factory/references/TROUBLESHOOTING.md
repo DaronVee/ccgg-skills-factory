@@ -913,6 +913,126 @@ Avoid issues by following these practices:
 
 ---
 
+### Issue 13: Skill Description Budget Exceeded
+
+**Symptoms:**
+- Some skills not loading or being ignored
+- `/context` or context inspection shows warnings about skill loading
+- Skills that previously worked stop being auto-invoked
+
+**Cause:** Total skill description text exceeds the character budget (~2% of context window, default ~16,000 chars). When you have many skills, their combined descriptions may exceed this limit, causing some to not load.
+
+**Solutions:**
+
+**Solution A: Shorten Descriptions**
+Trim verbose descriptions to essential trigger terms only. Remove filler words and focus on action verbs and use cases.
+
+**Solution B: Use `disable-model-invocation: true`**
+For skills that don't need auto-loading (manual-only skills), add this to their frontmatter. This removes their description from the context budget entirely.
+
+```yaml
+---
+name: deploy-production
+description: Deploy current branch to production
+disable-model-invocation: true
+---
+```
+
+**Solution C: Override Budget**
+Set the `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable to increase the limit:
+```bash
+export SLASH_COMMAND_TOOL_CHAR_BUDGET=32000
+```
+
+**Prevention:** Keep descriptions concise. A good description is 100-300 characters, not 800+.
+
+---
+
+### Issue 14: Skill Triggers When It Shouldn't
+
+**Symptoms:**
+- Skill auto-loads for unrelated tasks
+- Claude uses the skill when user didn't intend it
+- Skill interferes with normal Claude behavior
+
+**Cause:** Description keywords are too generic, or skill should be manual-only.
+
+**Solutions:**
+
+**Solution A: Make Manual-Only**
+```yaml
+---
+name: my-skill
+disable-model-invocation: true
+---
+```
+User must explicitly invoke with `/my-skill`. Claude cannot auto-load.
+
+**Solution B: Narrow Description**
+Replace generic terms with specific trigger terms:
+
+Before: `description: Helps with code and files`
+After: `description: Convert TypeScript interfaces to Zod schemas. Use when migrating validation.`
+
+**Solution C: Use `user-invocable: false`**
+If the skill is background knowledge that only Claude should reference:
+```yaml
+---
+name: api-conventions
+user-invocable: false
+---
+```
+
+---
+
+### Issue 15: Forked Skill Returns Poor or Empty Results
+
+**Symptoms:**
+- Skill with `context: fork` runs but returns unhelpful summary
+- Subagent seems confused about what to do
+- Results are generic or off-topic
+
+**Cause:** Forked skills run in isolation with NO conversation history. The skill body must contain complete task instructions.
+
+**Diagnostic Steps:**
+
+1. **Check skill body content:** Does it read like a complete task prompt?
+2. **Check for conversation references:** Does it say "the file above" or "as discussed"? These won't work in fork.
+3. **Check agent type:** Is `agent: Explore` set for a task that needs to write files?
+
+**Solutions:**
+
+**Solution A: Add Explicit Task Instructions**
+Bad (reference-only, no task):
+```markdown
+## Conventions
+- Use REST standards
+- Validate inputs
+```
+
+Good (complete task prompt):
+```markdown
+Research all API endpoints in this codebase. Document each endpoint's
+method, path, request/response schema, and authentication requirements.
+Output a structured markdown report.
+```
+
+**Solution B: Use `$ARGUMENTS` for Context**
+```yaml
+---
+name: research-topic
+argument-hint: "[question]"
+context: fork
+agent: Explore
+---
+Research the following question thoroughly: $ARGUMENTS
+```
+
+**Solution C: Don't Fork**
+If the skill needs conversation history or interactive back-and-forth, remove `context: fork` and let it run in the main conversation.
+
+---
+
 ## Getting Help
 
 **When troubleshooting doesn't resolve the issue:**

@@ -17,7 +17,18 @@ from pathlib import Path
 
 SKILL_TEMPLATE = """---
 name: {skill_name}
-description: [TODO: Complete and informative explanation of what the skill does and when to use it. Include WHEN to use this skill - specific scenarios, file types, or tasks that trigger it.]
+description: |
+  TODO: Clear description of what this skill does and when to use it.
+  Include trigger terms and specific scenarios. Max 1024 chars.
+# --- Optional fields (uncomment those you need) ---
+# See FRONTMATTER_DECISION_GUIDE.md for which fields to enable
+# disable-model-invocation: true  # User-only invocation (for side-effect skills: deploy, send, delete)
+# user-invocable: false            # Hide from / menu (for background knowledge/conventions)
+# context: fork                    # Run in isolated subagent (no conversation history)
+# agent: general-purpose           # Subagent type when context: fork (Explore, Plan, general-purpose, or custom)
+# model: inherit                   # Model override (sonnet, opus, haiku, inherit)
+# argument-hint: "[your-argument]" # Autocomplete hint for arguments
+# allowed-tools: Read, Grep, Glob  # Restrict tool access (comma-separated)
 ---
 
 # {skill_title}
@@ -332,7 +343,7 @@ def main():
         print("\nSkill name requirements:")
         print("  - Hyphen-case identifier (e.g., 'data-analyzer')")
         print("  - Lowercase letters, digits, and hyphens only")
-        print("  - Max 40 characters")
+        print("  - Max 64 characters")
         print("  - Must match directory name exactly")
         print("\nExamples:")
         print("  python scripts/init_skill.py my-new-skill")

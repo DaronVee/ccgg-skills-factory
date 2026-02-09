@@ -113,12 +113,12 @@ class SkillValidator:
         if '\t' in frontmatter:
             self.errors.append("[ERROR] YAML frontmatter contains tabs - use spaces only")
 
-        # Check required fields
+        # Check recommended fields (name defaults to directory, description to first paragraph)
         if 'name:' not in frontmatter:
-            self.errors.append("[ERROR] Missing required field: 'name' in YAML frontmatter")
+            self.warnings.append("[WARNING] Missing recommended field: 'name' in YAML frontmatter (defaults to directory name)")
 
         if 'description:' not in frontmatter:
-            self.errors.append("[ERROR] Missing required field: 'description' in YAML frontmatter")
+            self.warnings.append("[WARNING] Missing recommended field: 'description' in YAML frontmatter (defaults to first paragraph of body)")
 
         # Extract name
         name_match = re.search(r'name:\s*(.+)', frontmatter)
@@ -139,42 +139,64 @@ class SkillValidator:
             self.errors.append("[ERROR] Found TODO markers in YAML frontmatter - replace with actual content")
 
         # Validate allowed-tools (optional field)
+        # Official format: comma-separated string (e.g., "Read, Grep, Glob")
+        # Also supports argument patterns: "Bash(gh *), Read, Grep"
         if 'allowed-tools:' in frontmatter:
-            # Extract allowed-tools value
-            tools_match = re.search(r'allowed-tools:\s*\[(.*?)\]', frontmatter, re.DOTALL)
-            if tools_match:
-                tools_str = tools_match.group(1).strip()
-                # Parse tool names (handle quotes, spaces, commas)
-                tools = [t.strip().strip('"').strip("'") for t in tools_str.split(',') if t.strip()]
+            # Known Claude Code tools (as of 2026-02)
+            valid_tools = ['Read', 'Write', 'Edit', 'Grep', 'Glob', 'Bash', 'Task', 'Skill']
 
-                # Known Claude Code tools (as of 2025-11-22)
-                valid_tools = ['Read', 'Write', 'Edit', 'Grep', 'Glob', 'Bash', 'Task', 'SlashCommand', 'Skill']
+            # Try comma-separated string format first (official format)
+            tools_str_match = re.search(r'allowed-tools:\s*(.+?)(?:\n|$)', frontmatter)
+            if tools_str_match:
+                tools_str = tools_str_match.group(1).strip()
 
-                for tool in tools:
-                    if tool not in valid_tools:
-                        self.warnings.append(
-                            f"[WARNING] allowed-tools contains unknown tool '{tool}'. "
-                            f"Verify spelling or check if this is a new Claude Code tool. "
-                            f"Known tools: {', '.join(valid_tools)}"
-                        )
+                # Check if it's a YAML list format (legacy, still supported)
+                if tools_str.startswith('['):
+                    # Bracket list format: [Read, Grep, Glob]
+                    inner = re.search(r'\[(.*?)\]', tools_str)
+                    if inner:
+                        tools_raw = [t.strip().strip('"').strip("'") for t in inner.group(1).split(',') if t.strip()]
+                    else:
+                        tools_raw = []
+                        self.errors.append("[ERROR] allowed-tools bracket format invalid")
+                    self.suggestions.append(
+                        "[TIP] allowed-tools uses legacy bracket format - official format is comma-separated string: "
+                        "allowed-tools: Read, Grep, Glob"
+                    )
+                else:
+                    # Comma-separated string format (official)
+                    tools_raw = [t.strip().strip('"').strip("'") for t in tools_str.split(',') if t.strip()]
+
+                # Validate each tool (handle argument patterns like "Bash(gh *)")
+                for tool in tools_raw:
+                    # Extract base tool name (before parentheses for argument patterns)
+                    base_tool = re.match(r'^(\w+)', tool)
+                    if base_tool:
+                        tool_name = base_tool.group(1)
+                        if tool_name not in valid_tools:
+                            self.warnings.append(
+                                f"[WARNING] allowed-tools contains unknown tool '{tool_name}'. "
+                                f"Known tools: {', '.join(valid_tools)}"
+                            )
+                    else:
+                        self.warnings.append(f"[WARNING] allowed-tools contains unparseable entry: '{tool}'")
             else:
-                # Check if it's a multiline list format
+                # Check if it's a multiline list format (legacy)
                 tools_multiline = re.search(r'allowed-tools:\s*\n((?:\s+-\s+\w+\n?)+)', frontmatter)
                 if tools_multiline:
                     tools_lines = tools_multiline.group(1).strip().split('\n')
                     tools = [re.search(r'-\s+(\w+)', line).group(1) for line in tools_lines if re.search(r'-\s+(\w+)', line)]
 
-                    valid_tools = ['Read', 'Write', 'Edit', 'Grep', 'Glob', 'Bash', 'Task', 'SlashCommand', 'Skill']
-
                     for tool in tools:
                         if tool not in valid_tools:
                             self.warnings.append(
                                 f"[WARNING] allowed-tools contains unknown tool '{tool}'. "
-                                f"Verify spelling or check if this is a new Claude Code tool. "
                                 f"Known tools: {', '.join(valid_tools)}"
                             )
-                else:
-                    self.errors.append("[ERROR] allowed-tools format invalid - must be YAML list (e.g., [Read, Grep, Glob] or multiline)")
+                    self.suggestions.append(
+                        "[TIP] allowed-tools uses legacy multiline format - official format is comma-separated string: "
+                        "allowed-tools: Read, Grep, Glob"
+                    )
 
         # Validate metadata (optional field)
         if 'metadata:' in frontmatter:
@@ -195,6 +217,108 @@ class SkillValidator:
                 inline_match = re.search(r'metadata:\s*\{(.+?)\}', frontmatter)
                 if not inline_match:
                     self.errors.append("[ERROR] metadata format invalid - must be YAML dictionary (key: value pairs)")
+
+        # Validate new optional fields (v2.0)
+        self._validate_new_frontmatter_fields(frontmatter)
+
+    def _validate_new_frontmatter_fields(self, frontmatter):
+        """Validate v2.0 frontmatter fields: context, agent, model, disable-model-invocation, user-invocable, argument-hint, hooks."""
+
+        # Validate disable-model-invocation
+        dmi_match = re.search(r'disable-model-invocation:\s*(.+)', frontmatter)
+        if dmi_match:
+            val = dmi_match.group(1).strip().lower()
+            if val not in ('true', 'false'):
+                self.errors.append(
+                    f"[ERROR] disable-model-invocation must be 'true' or 'false', got '{val}'"
+                )
+
+        # Validate user-invocable
+        ui_match = re.search(r'user-invocable:\s*(.+)', frontmatter)
+        if ui_match:
+            val = ui_match.group(1).strip().lower()
+            if val not in ('true', 'false'):
+                self.errors.append(
+                    f"[ERROR] user-invocable must be 'true' or 'false', got '{val}'"
+                )
+
+        # Validate context
+        ctx_match = re.search(r'context:\s*(.+)', frontmatter)
+        has_fork = False
+        if ctx_match:
+            val = ctx_match.group(1).strip().lower()
+            if val != 'fork':
+                self.errors.append(
+                    f"[ERROR] context field only supports 'fork', got '{val}'"
+                )
+            else:
+                has_fork = True
+
+        # Validate agent (only meaningful with context: fork)
+        agent_match = re.search(r'agent:\s*(.+)', frontmatter)
+        if agent_match:
+            agent_val = agent_match.group(1).strip()
+            known_agents = ['Explore', 'Plan', 'general-purpose']
+            if not has_fork:
+                self.warnings.append(
+                    "[WARNING] 'agent' field set without 'context: fork' - agent type is only used with forked execution"
+                )
+            if agent_val not in known_agents:
+                self.suggestions.append(
+                    f"[TIP] agent '{agent_val}' is not a built-in type ({', '.join(known_agents)}). "
+                    "Ensure a custom agent with this name exists in .claude/agents/"
+                )
+
+        # Validate model
+        model_match = re.search(r'model:\s*(.+)', frontmatter)
+        if model_match:
+            val = model_match.group(1).strip().lower()
+            valid_models = ['sonnet', 'opus', 'haiku', 'inherit']
+            if val not in valid_models:
+                self.errors.append(
+                    f"[ERROR] model must be one of {valid_models}, got '{val}'"
+                )
+
+        # Validate argument-hint format
+        arg_match = re.search(r'argument-hint:\s*(.+)', frontmatter)
+        if arg_match:
+            val = arg_match.group(1).strip().strip('"').strip("'")
+            if not val:
+                self.warnings.append("[WARNING] argument-hint is empty - provide a hint like '[issue-number]'")
+
+        # Check for context: fork content quality
+        if has_fork:
+            self._validate_fork_content()
+
+    def _validate_fork_content(self):
+        """Warn if a forked skill lacks task instructions (just reference material)."""
+        skill_md = self.skill_path / 'SKILL.md'
+        if not skill_md.exists():
+            return
+
+        content = skill_md.read_text(encoding='utf-8')
+        body_match = re.search(r'^---\n.*?\n---\n(.+)', content, re.DOTALL)
+        if not body_match:
+            self.warnings.append(
+                "[WARNING] context: fork is set but SKILL.md has no body content. "
+                "Forked skills need explicit task instructions."
+            )
+            return
+
+        body = body_match.group(1).strip()
+
+        # Heuristic: check for imperative verbs suggesting task instructions
+        task_indicators = [
+            r'\b(analyze|research|find|search|create|generate|build|review|audit|check|document|report|list|identify)\b',
+        ]
+        has_task = any(re.search(pattern, body, re.IGNORECASE) for pattern in task_indicators)
+
+        if not has_task:
+            self.warnings.append(
+                "[WARNING] context: fork is set but body may lack task instructions. "
+                "Forked skills run in isolation with NO conversation history - "
+                "the body should read like a complete task prompt, not just reference material."
+            )
 
     def validate_naming_conventions(self):
         """Validate skill name follows conventions."""

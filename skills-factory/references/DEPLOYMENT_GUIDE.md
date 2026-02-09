@@ -147,21 +147,89 @@ git status
 
 ---
 
-### Priority Order: Personal vs. Project
+### Priority Order: Enterprise vs. Personal vs. Project
 
-When both personal and project skills exist with the same name:
+When skills exist with the same name at multiple levels, **higher-scoped skills take precedence**:
 
-**Project skills take precedence** over personal skills.
+**Resolution order (highest to lowest priority):**
+1. **Enterprise-managed skills** (organization-level, if applicable)
+2. **Personal skills** (`~/.claude/skills/`)
+3. **Project skills** (`.claude/skills/`)
+
+**Personal skills take precedence** over project skills.
 
 **Example:**
 ```
-~/.claude/skills/commit-helper/  (Personal: generic commit messages)
-.claude/skills/commit-helper/    (Project: includes project-specific conventions)
+~/.claude/skills/commit-helper/  (Personal: your custom commit workflow)
+.claude/skills/commit-helper/    (Project: team's generic commit helper)
 
-→ Claude uses .claude/skills/commit-helper/ when in this project
+→ Claude uses ~/.claude/skills/commit-helper/ (personal wins)
 ```
 
-**Use case:** Override personal skill with project-specific version for specific projects.
+**Use case:** Override project-level team defaults with your personal preferences. Project skills serve as team defaults that individual developers can customize with personal versions.
+
+---
+
+### Nested Directory Auto-Discovery (Monorepo Support)
+
+Claude Code automatically discovers skills in nested `.claude/skills/` directories within your project. This is especially useful for **monorepos** where different packages have their own skills.
+
+**How it works:**
+- Claude scans for `.claude/skills/` directories throughout the project tree
+- Skills found in subdirectories are loaded alongside root-level project skills
+- Standard priority resolution still applies (enterprise > personal > project)
+
+**Example monorepo structure:**
+```
+my-monorepo/
+├── .claude/skills/          # Root-level project skills
+│   └── shared-conventions/
+├── packages/
+│   ├── frontend/
+│   │   └── .claude/skills/  # Frontend-specific skills
+│   │       └── react-patterns/
+│   ├── backend/
+│   │   └── .claude/skills/  # Backend-specific skills
+│   │       └── api-design/
+│   └── shared/
+│       └── .claude/skills/  # Shared package skills
+│           └── testing-standards/
+```
+
+**When to use:**
+- Monorepo with packages that have distinct workflows
+- Large projects where different modules need different conventions
+- Microservice architectures with per-service skills
+
+---
+
+### Skills from `--add-dir` Directories
+
+When launching Claude Code with `--add-dir` to include additional directories, skills in those directories are **automatically discovered and loaded**.
+
+**How it works:**
+```bash
+claude --add-dir /path/to/shared-skills-repo
+```
+
+- Claude discovers `.claude/skills/` within the added directory
+- Skills load alongside personal and project skills
+- **Live change detection**: Modifications to skills in added directories are picked up during the session
+
+**Use cases:**
+- **Shared skills repository**: Team maintains a central repo of skills, each developer adds it via `--add-dir`
+- **Cross-project skills**: Reference skills from another project without copying them
+- **Development workflow**: Edit skills in one location while testing them in another project
+
+**Example:**
+```bash
+# Team has a shared skills repo
+git clone https://github.com/team/claude-skills ~/team-skills
+
+# Add to any project session
+claude --add-dir ~/team-skills
+# Skills from ~/team-skills/.claude/skills/ now available
+```
 
 ---
 
@@ -365,26 +433,68 @@ curl -X DELETE https://api.anthropic.com/v1/skills/skill_abc123 \
 ### Strategy 2: Plugins - Best for Reusable Skills
 
 **Use when:**
-- Skill is reusable across projects
-- Want marketplace distribution
-- Building skill library
+- Skill is reusable across multiple projects
+- Want marketplace distribution and discoverability
+- Building a skill library for your team or organization
+- Skills need to be versioned and updated centrally
+
+**How plugins work with skills:**
+
+Plugins can bundle skills alongside other components (commands, agents, hooks, MCP servers). Skills within plugins use **namespaced invocation**:
+
+```
+plugin-name:skill-name
+```
+
+**Example:**
+```
+# Plugin "devtools" contains a skill "lint-config"
+# User invokes it as:
+/devtools:lint-config
+
+# Claude references it as:
+devtools:lint-config
+```
+
+**Namespace rules:**
+- Plugin skill names are prefixed with the plugin name and a colon
+- Plugin skills **cannot conflict** with personal or project skills (different namespace)
+- If a personal skill `lint-config` exists AND plugin `devtools:lint-config` exists, they are separate skills
+
+**Plugin structure with skills:**
+```
+my-plugin/
+├── plugin.json          # Plugin manifest
+├── skills/
+│   ├── my-skill-a/
+│   │   └── SKILL.md
+│   └── my-skill-b/
+│       ├── SKILL.md
+│       └── references/
+├── agents/              # Optional: bundled agents
+├── commands/            # Optional: bundled commands
+└── hooks/               # Optional: bundled hooks
+```
 
 **Process:**
-1. Create plugin with skills/ directory
-2. Publish to plugin marketplace
-3. Team installs plugin
+1. Create plugin with `plugin-creator` skill (or manually)
+2. Add skills to `skills/` directory within the plugin
+3. Validate and test locally
+4. Publish to plugin marketplace or distribute via git/zip
+5. Team installs plugin - all skills become available
 
 **Pros:**
-- Professional distribution
-- Discoverability
-- Versioning support
+- Professional distribution with namespacing
+- Discoverability through marketplace
+- Versioning support (update plugin = update all skills)
+- Bundle skills with related agents, commands, hooks
 - Works across teams/organizations
 
 **Cons:**
-- More setup overhead
-- Requires plugin development
+- More setup overhead than simple file copy
+- Requires understanding plugin structure
 
-See [Claude Code plugin documentation](https://docs.claude.com/en/docs/claude-code/plugins) for details.
+**See:** Use the `plugin-creator` skill for guided plugin creation.
 
 ---
 

@@ -545,4 +545,99 @@ Is task linear with fixed order?
 
 ---
 
+## Pattern 5: Forked Context Workflow
+
+**Best for:** Self-contained tasks that benefit from isolation, heavy research that would bloat main context, parallel independent analysis, or tasks requiring tool restrictions.
+
+### Structure
+
+```
+User invokes skill --> Fork creates isolated subagent
+                       --> Subagent executes skill body as task
+                       --> Subagent works independently (no conversation history)
+                       --> Results summarized back to main conversation
+```
+
+### When to Use
+
+- **Context window protection**: Research/analysis generates heavy output
+- **Self-contained tasks**: Task doesn't need conversation history
+- **Parallel execution**: Multiple independent analyses can run simultaneously
+- **Tool restriction**: Skill should only read, never write
+
+### Configuration
+
+```yaml
+---
+name: codebase-research
+description: Deep codebase research with context protection
+context: fork
+agent: Explore
+model: haiku
+allowed-tools: Read, Grep, Glob
+argument-hint: "[research-question]"
+---
+```
+
+### Skill Body as Task Prompt
+
+The critical difference from other patterns: the SKILL.md body IS the subagent's task. It must be self-contained and actionable.
+
+**Good forked skill body:**
+```markdown
+# Codebase Research
+
+Research the codebase to answer the question below.
+
+## Process
+1. Discover relevant files using Glob patterns
+2. Read key files to understand architecture
+3. Search for specific patterns using Grep
+4. Synthesize findings into a structured report
+
+## Output Format
+- **Summary**: 3-5 sentences of key findings
+- **Details**: Organized by topic with file references
+- **Recommendations**: Actionable next steps
+
+## Research Question
+$ARGUMENTS
+```
+
+**Bad forked skill body** (will fail - no task instructions):
+```markdown
+## API Standards
+- Use REST conventions
+- Validate all inputs
+- Return proper status codes
+```
+
+### Key Constraints
+
+1. **No conversation history**: Subagent starts fresh with ONLY the skill body
+2. **No nesting**: Subagent cannot spawn other subagents
+3. **CLAUDE.md loads**: Project CLAUDE.md hierarchy IS available in forked context
+4. **Results summarized**: Verbose output condensed before returning to main conversation
+
+### Combining with Other Patterns
+
+Forked context can incorporate other workflow patterns within the skill body:
+
+- **Sequential within fork**: Steps 1-5 research process
+- **Checklist within fork**: Quality checks before outputting results
+- **Conditional within fork**: Different analysis paths based on what's found
+
+### Examples
+
+| Use Case | Configuration | Body Structure |
+|----------|--------------|----------------|
+| Deep research | `agent: Explore`, `model: haiku` | Sequential research steps |
+| Security audit | `agent: Explore`, `allowed-tools: Read, Grep, Glob` | Checklist of security checks |
+| Multi-module analysis | `agent: Explore` (invoke multiple times) | Per-module analysis template |
+| Architecture planning | `agent: Plan` | Planning methodology steps |
+
+**See:** [SUBAGENT_PATTERNS.md](SUBAGENT_PATTERNS.md) for comprehensive examples and the full decision guide on when to use forked vs. main conversation execution.
+
+---
+
 **Key Principle:** Workflows should guide users efficiently without overwhelming them. Choose the simplest pattern that provides necessary structure, and combine patterns only when complexity justifies it.

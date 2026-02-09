@@ -9,13 +9,21 @@ A comprehensive meta-skill for creating, validating, and iterating on production
 
 ## About Skills
 
-Skills extend Claude Code's capabilities with specialized knowledge and workflows. They use a **progressive disclosure system** that loads content in three levels:
+Skills extend Claude Code's capabilities with specialized knowledge and workflows. They use a **two-level progressive disclosure system**:
 
-1. **Metadata** (YAML) - Always loaded at startup (~100 tokens)
-2. **Instructions** (SKILL.md body) - Loaded when triggered (<5,000 tokens)
-3. **Resources** (supporting files) - Loaded as needed (effectively unlimited)
+1. **Description** (YAML `description` field) - Always loaded into context at startup. Claude uses this to decide when to invoke the skill.
+2. **Full Content** (SKILL.md body + referenced files) - Loaded when the skill is invoked, either by Claude or the user.
 
-Skills are filesystem-based tools that live in `~/.claude/skills/` (personal) or `.claude/skills/` (project-specific).
+Skills are filesystem-based and live in:
+- `~/.claude/skills/` - Personal skills (available across all projects)
+- `.claude/skills/` - Project skills (version-controlled, shared via git)
+- `.claude/commands/` - Backward-compatible location (also works)
+
+**Priority resolution** (when same name exists at multiple levels): Enterprise > Personal > Project.
+
+**Note:** Skills follow the [Agent Skills open standard](https://agentskills.io) for cross-platform compatibility.
+
+**Context budget:** Skill descriptions consume context. Total budget is ~2% of context window (default ~16k chars). If you have many skills, keep descriptions concise or use `disable-model-invocation: true` on rarely-needed skills.
 
 ## Skill Creation Process
 
@@ -47,6 +55,9 @@ Before writing anything, deeply understand what you're building:
 
 Design your skill's structure before implementation:
 
+**MANDATORY - Configure Frontmatter First:**
+Before writing ANY YAML frontmatter, read and follow [references/FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md). Run through the 6-question decision guide to determine which frontmatter fields this skill needs. This ensures you collect the right context about invocation patterns, execution context, arguments, tool access, dynamic data, and hooks BEFORE generating the YAML.
+
 **Choose Your Pattern:**
 - **Simple skill**: SKILL.md only (~100-300 lines)
 - **Standard skill**: SKILL.md + 1-3 reference files
@@ -64,6 +75,7 @@ Design your skill's structure before implementation:
 - Quality gates? Use checklist workflow
 - Conditional paths? Design decision tree
 - Iteration needed? Plan feedback loop
+- Isolated subagent task? Use forked context workflow
 
 **See:** [references/WORKFLOW_PATTERNS.md](references/WORKFLOW_PATTERNS.md) and [references/VALIDATION_PATTERNS.md](references/VALIDATION_PATTERNS.md)
 
@@ -86,10 +98,11 @@ my-skill-name/
 ```
 
 **Post-Initialization:**
+- Run through the Frontmatter Decision Guide (Step 2) to determine which fields to configure
 - Replace ALL `TODO:` placeholders in YAML frontmatter
 - Draft description with key trigger terms (max 1024 chars)
 - Ensure name is hyphen-case (lowercase + hyphens only)
-- Plan your progressive disclosure structure
+- Review commented optional fields and uncomment those needed
 
 **See:** Bundled `scripts/init_skill.py`
 
@@ -97,65 +110,109 @@ my-skill-name/
 
 Build your skill following best practices:
 
-**YAML Frontmatter Requirements:**
+**Complete YAML Frontmatter Reference:**
+
+| Field | Status | Description |
+|-------|--------|-------------|
+| `name` | Recommended | Lowercase + hyphens, max 64 chars. Defaults to directory name if omitted. |
+| `description` | Recommended | What it does + when to use. Max 1024 chars. Include trigger terms. Defaults to first paragraph of body. |
+| `disable-model-invocation` | Optional | `true` = only user can invoke with /name. Claude cannot auto-load. Use for side-effect skills (deploy, send, delete). |
+| `user-invocable` | Optional | `false` = hide from / menu. Only Claude can invoke. Use for background knowledge/conventions. |
+| `context` | Optional | `fork` = run in isolated subagent. No conversation history. See [SUBAGENT_PATTERNS.md](references/SUBAGENT_PATTERNS.md). |
+| `agent` | Optional | Subagent type when `context: fork`. Values: `Explore`, `Plan`, `general-purpose`, or custom agent name. |
+| `model` | Optional | Model override: `sonnet`, `opus`, `haiku`, or `inherit`. |
+| `argument-hint` | Optional | Autocomplete hint shown in / menu: `[issue-number]`, `[filename] [format]`. |
+| `allowed-tools` | Optional | Comma-separated tool restriction: `Read, Grep, Glob` or `Bash(gh *), Read`. |
+| `hooks` | Optional | Lifecycle hooks scoped to skill execution (PreToolUse, PostToolUse, Stop). |
+| `metadata` | Custom | Key-value tracking data: `{author: "Team", version: "1.0"}`. |
+
+**Minimal example** (most skills only need this):
 ```yaml
 ---
-name: skill-name          # Required: hyphen-case, max 64 chars
-description: |            # Required: max 1024 chars, include trigger terms
-  Clear, specific description of what this skill does.
-  Include key terms that should trigger the skill.
-  Focus on capabilities and use cases.
-allowed-tools:            # Optional: Pre-approved tools list (Claude Code only)
-  - Read
-  - Grep
-  - Glob
-metadata:                 # Optional: Custom key-value pairs for tracking
-  author: "TeamName"
-  version: "1.0.0"
-  category: "data-processing"
+name: my-helper
+description: Helps with specific task. Use when user asks about X or Y.
 ---
 ```
 
-**Optional YAML Fields:**
+**Full example** (forked research skill with restrictions):
+```yaml
+---
+name: deep-research
+description: Deep codebase research that protects main context from output bloat
+context: fork
+agent: Explore
+model: haiku
+allowed-tools: Read, Grep, Glob
+argument-hint: "[research-question]"
+---
+```
 
-**`allowed-tools`** (Claude Code only):
-- **Purpose**: Restricts which tools Claude can use when this skill is active
-- **Format**: YAML list of tool names
-- **Use Cases**:
-  - Read-only skills (prevent file modification): `[Read, Grep, Glob]`
-  - Security-sensitive workflows (limit tool scope)
-  - Data analysis only (no write/execute permissions)
-- **Known Tools**: Read, Write, Edit, Grep, Glob, Bash, Task, SlashCommand, Skill
-- **Example**:
-  ```yaml
-  ---
-  name: safe-file-reader
-  description: Read and analyze files without making changes
-  allowed-tools: [Read, Grep, Glob]
-  ---
-  ```
+**Important format notes:**
+- `allowed-tools` is a **comma-separated string**, not a YAML list
+- `allowed-tools` supports argument patterns: `Bash(gh *)`, `Bash(npm test)`
+- Available tools: `Read`, `Write`, `Edit`, `Grep`, `Glob`, `Bash`, `Task`, `Skill`
 
-**`metadata`** (All platforms):
-- **Purpose**: Store custom key-value pairs for tracking and categorization
-- **Format**: YAML dictionary (string keys → string values)
-- **Use Cases**:
-  - Version tracking: `{version: "2.1.0"}`
-  - Team ownership: `{author: "TeamName", contact: "team@example.com"}`
-  - Categorization: `{category: "content-creation", domain: "marketing"}`
-  - Custom tracking IDs: `{internal-id: "SKILL-12345"}`
-- **Best Practice**: Use unique key names to avoid conflicts with other tools
-- **Example**:
-  ```yaml
-  ---
-  name: pdf-processor
-  description: Extract text and tables from PDF files
-  metadata:
-    author: "ContentTeam"
-    version: "2.1.0"
-    category: "document-processing"
-    last-updated: "2025-11-22"
-  ---
-  ```
+**See:** [references/FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md) for the full 6-question decision guide.
+
+#### Invocation Control
+
+Control when and how your skill is triggered:
+
+| `disable-model-invocation` | `user-invocable` | Result |
+|---------------------------|-----------------|--------|
+| omitted (false) | omitted (true) | **Default**: Claude + user can invoke |
+| `true` | omitted (true) | **Manual only**: User invokes with `/name`, Claude cannot auto-load |
+| omitted (false) | `false` | **Auto-only**: Claude can invoke, hidden from `/` menu |
+| `true` | `false` | **Disabled**: Neither can invoke (rarely useful) |
+
+**Rule of thumb**: If the skill has side effects (deploy, send, delete, publish), use `disable-model-invocation: true`.
+
+#### String Substitutions
+
+Skills can accept arguments from the user:
+
+| Variable | Meaning | Example |
+|----------|---------|---------|
+| `$ARGUMENTS` | All arguments as string | `/fix-issue 42` → `$ARGUMENTS` = `"42"` |
+| `$0` or `$ARGUMENTS[0]` | First argument | `/convert file.md pdf` → `$0` = `"file.md"` |
+| `$1` or `$ARGUMENTS[1]` | Second argument | `/convert file.md pdf` → `$1` = `"pdf"` |
+| `${CLAUDE_SESSION_ID}` | Current session ID | Useful for unique output paths |
+
+**Auto-append**: If `$ARGUMENTS` doesn't appear in skill content, arguments are automatically appended to the end.
+
+**Example parameterized skill:**
+```yaml
+---
+name: fix-issue
+description: Fix a GitHub issue by number
+argument-hint: "[issue-number]"
+---
+Look up issue $ARGUMENTS using `gh issue view $ARGUMENTS`.
+Analyze the issue, implement a fix, and create a PR.
+```
+
+#### Dynamic Context Injection
+
+Inject live data into skill content using `` !`command` `` syntax:
+
+```markdown
+## Current State
+!`git status`
+
+## Recent Changes
+!`git log --oneline -5`
+
+## Instructions
+Based on the repository state above, suggest next steps.
+```
+
+Commands run BEFORE skill content is sent to Claude. Use for git state, GitHub data (`!`gh issue list``), system info.
+
+#### Advanced Patterns
+
+- **`ultrathink`**: Include this keyword in skill content to enable extended thinking mode for complex analysis
+- **Skill character budget**: Total skill descriptions use ~2% of context window. Override with `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable
+- **Subagent integration**: Skills can spawn subagents (`context: fork`) or be preloaded into subagents (`skills:` field). See [references/SUBAGENT_PATTERNS.md](references/SUBAGENT_PATTERNS.md)
 
 **SKILL.md Body Guidelines:**
 - Start with clear "About" section explaining purpose
@@ -165,8 +222,8 @@ metadata:                 # Optional: Custom key-value pairs for tracking
 - Keep total SKILL.md under 500 lines (ideally under 200)
 
 **Progressive Disclosure Rules:**
-- Reference files ONE level deep: `[Guide](references/guide.md)` ✓
-- No nested references: `references/category/subcategory/file.md` ✗
+- Reference files ONE level deep: `[Guide](references/guide.md)` OK
+- No nested references: `references/category/subcategory/file.md` NOT OK
 - Load scripts when needed: "Run validation: `bash scripts/validate.py`"
 - Front-load critical info, defer details to references
 
@@ -188,13 +245,14 @@ python scripts/comprehensive_validate.py /path/to/my-skill-name
 ```
 
 This checks:
-- ✓ YAML structure and required fields
-- ✓ Naming conventions (hyphen-case, no invalid chars)
-- ✓ Description quality (length, clarity, trigger terms)
-- ✓ Progressive disclosure (file references one-level deep)
-- ✓ Best practices (no absolute paths, TODO markers, etc.)
-- ✓ Content quality (examples present, clear structure)
-- ✓ Workflow validation (if workflows present)
+- YAML structure and field validity (including new fields: context, agent, model, etc.)
+- Naming conventions (hyphen-case, no invalid chars)
+- Description quality (length, clarity, trigger terms)
+- Progressive disclosure (file references one-level deep)
+- Best practices (no absolute paths, TODO markers, etc.)
+- Content quality (examples present, clear structure)
+- Workflow validation (if workflows present)
+- Fork validation (if `context: fork`, checks for task instructions)
 
 **Fix all errors and warnings before packaging.**
 
@@ -237,6 +295,8 @@ Most skills require iteration to reach production quality. Use the **Two-Claude 
 - Were workflows clear and easy to follow?
 - Did validation catch errors effectively?
 - What caused confusion or errors?
+- For forked skills: Did the subagent return a useful summary?
+- For `disable-model-invocation` skills: Did it correctly NOT auto-trigger?
 
 **See:** [references/TWO_CLAUDE_METHODOLOGY.md](references/TWO_CLAUDE_METHODOLOGY.md) for complete iteration framework.
 
@@ -282,18 +342,23 @@ Upload via `/v1/skills` endpoint for organization-wide availability.
 ## Troubleshooting
 
 **Common Issues:**
-- "Claude doesn't use my skill" → Check description triggers, YAML validity
+- "Claude doesn't use my skill" → Check description triggers, YAML validity, `disable-model-invocation` not accidentally set
 - "Skill loaded but ignored" → Add concrete examples, improve clarity
+- "Skill triggers when it shouldn't" → Use `disable-model-invocation: true`
 - "Validation failing" → Run comprehensive_validate.py for specific errors
 - "Skill too complex" → Apply progressive disclosure, move content to references
 - "Skill created but not available" → Check installation location, use --install flag
 - "Skill works in Code but not .ai" → Skills don't sync, must upload separately
 - "Team doesn't have skill" → Commit to git (project) or share zip (other surfaces)
+- "Some skills not loading" → Character budget exceeded, shorten descriptions
+- "Forked skill returns poor results" → Ensure body has task instructions, not just reference material
 
 **See:** [references/TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) for comprehensive troubleshooting guide.
 
 ## Reference Documentation
 
+- **[FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md)** - Intelligent YAML configuration wizard (6-question decision tree)
+- **[SUBAGENT_PATTERNS.md](references/SUBAGENT_PATTERNS.md)** - Skill/subagent integration (fork patterns, agent skills loading)
 - **[EVALUATION_GUIDE.md](references/EVALUATION_GUIDE.md)** - Evaluation-driven development methodology
 - **[TWO_CLAUDE_METHODOLOGY.md](references/TWO_CLAUDE_METHODOLOGY.md)** - Complete iterative testing framework
 - **[WORKFLOW_PATTERNS.md](references/WORKFLOW_PATTERNS.md)** - Workflow design patterns and examples
@@ -318,13 +383,28 @@ Each example includes `ANNOTATIONS.md` explaining architectural decisions.
 
 ## Version History
 
+**v2.0.0** (2026-02-09)
+- Complete frontmatter reference: all 11 official YAML fields documented
+- Intelligent Frontmatter Decision Guide: 6-question wizard for configuring new skills
+- Subagent integration patterns: context: fork, agent types, skills field in agents
+- Invocation control: disable-model-invocation, user-invocable, decision matrix
+- String substitutions: $ARGUMENTS, $N, ${CLAUDE_SESSION_ID}
+- Dynamic context injection: !`command` syntax
+- Advanced patterns: ultrathink, character budget, argument patterns
+- Fixed priority resolution order: enterprise > personal > project
+- Fixed allowed-tools format: comma-separated string (not YAML list)
+- Updated name/description status: recommended (not required, defaults exist)
+- New reference: FRONTMATTER_DECISION_GUIDE.md
+- New reference: SUBAGENT_PATTERNS.md
+- Updated validation script with new field recognition
+
 **v1.1.0** (2025-10-19)
 - Added deployment layer with cross-surface support
 - Enhanced package_skill.py with --install flag (personal/project)
 - Enhanced init_skill.py with interactive location prompt
 - Created DEPLOYMENT_GUIDE.md reference (~4,000 words)
 - Added deployment troubleshooting (Issues 9-12)
-- Complete end-to-end workflow: creation → deployment → distribution
+- Complete end-to-end workflow: creation -> deployment -> distribution
 
 **v1.0.0** (2025-10-19)
 - Initial production release
