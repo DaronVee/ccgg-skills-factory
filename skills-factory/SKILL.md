@@ -193,20 +193,9 @@ Analyze the issue, implement a fix, and create a PR.
 
 #### Dynamic Context Injection
 
-Inject live data into skill content using `` !`command` `` syntax:
+Skills can inject live shell data (git status, GitHub info, system state) into their content at load time using a special syntax. Commands execute BEFORE skill content reaches Claude.
 
-```markdown
-## Current State
-!`git status`
-
-## Recent Changes
-!`git log --oneline -5`
-
-## Instructions
-Based on the repository state above, suggest next steps.
-```
-
-Commands run BEFORE skill content is sent to Claude. Use for git state, GitHub data (`!`gh issue list``), system info.
+**Full documentation with examples and patterns:** See [references/FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md) — Question 5: "Does this skill need dynamic data?"
 
 #### Advanced Patterns
 
@@ -389,7 +378,7 @@ Each example includes `ANNOTATIONS.md` explaining architectural decisions.
 - Subagent integration patterns: context: fork, agent types, skills field in agents
 - Invocation control: disable-model-invocation, user-invocable, decision matrix
 - String substitutions: $ARGUMENTS, $N, ${CLAUDE_SESSION_ID}
-- Dynamic context injection: !`command` syntax
+- Dynamic context injection: exclamation-backtick syntax (examples moved to reference)
 - Advanced patterns: ultrathink, character budget, argument patterns
 - Fixed priority resolution order: enterprise > personal > project
 - Fixed allowed-tools format: comma-separated string (not YAML list)
