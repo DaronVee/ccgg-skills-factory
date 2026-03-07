@@ -1,0 +1,68 @@
+{
+  "skill_name": "skills-factory",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a new Claude Code skill called 'commit-helper' that helps users create well-formatted git commits. It should run git status, git diff, and git log in parallel, then draft a commit message matching the repo's style.",
+      "expected_output": "A complete skill directory with SKILL.md containing valid YAML frontmatter and structured body with workflow steps",
+      "files": [],
+      "expectations": [
+        "A SKILL.md file is created with valid YAML frontmatter containing 'name: commit-helper'",
+        "The YAML frontmatter includes a 'description' field with trigger terms related to commits",
+        "The skill body contains numbered steps or a clear workflow",
+        "The description is under 1024 characters",
+        "The skill references running git commands (status, diff, log)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create a skill called 'deep-research' that runs codebase analysis in a forked subagent context. It should use the Explore agent type, restrict tools to Read/Grep/Glob only, and accept a research question as argument.",
+      "expected_output": "A skill with context: fork, agent: Explore, allowed-tools, and argument-hint in frontmatter",
+      "files": [],
+      "expectations": [
+        "SKILL.md frontmatter contains 'context: fork'",
+        "SKILL.md frontmatter contains 'agent: Explore'",
+        "SKILL.md frontmatter contains 'allowed-tools' with Read, Grep, and Glob",
+        "SKILL.md frontmatter contains 'argument-hint'",
+        "The skill body contains task instructions (not just reference material) since forked skills need self-contained prompts"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Create a skill called 'data-pipeline' that processes CSV files through validation, transformation, and output stages. It needs a validation script, a transformation reference guide, and should use disable-model-invocation since it has side effects.",
+      "expected_output": "A skill with scripts/, references/, disable-model-invocation: true, and progressive disclosure structure",
+      "files": [],
+      "expectations": [
+        "SKILL.md frontmatter contains 'disable-model-invocation: true'",
+        "A scripts/ directory is created or referenced",
+        "A references/ directory is created or referenced",
+        "The skill body uses progressive disclosure (references detail docs instead of inlining everything)",
+        "The SKILL.md body is under 500 lines"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Help me organize my project files into folders. I want a scripts/ directory, a docs/ directory, and a config/ directory.",
+      "expected_output": "Claude should help with file organization WITHOUT invoking the skills-factory workflow. This is about project structure, not skill creation.",
+      "files": [],
+      "expectations": [
+        "No SKILL.md file is created",
+        "No YAML frontmatter with skill fields is generated",
+        "The response helps with general file organization, not skill creation"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Create a skill called 'pdf-filler' for filling PDF forms. After creating the skill, also set up evals with 3 test cases and trigger-eval queries so we can run the automated eval loop.",
+      "expected_output": "A complete skill PLUS evals/evals.json and evals/trigger-eval.json following the schemas",
+      "files": [],
+      "expectations": [
+        "SKILL.md exists with valid frontmatter for 'pdf-filler'",
+        "evals/evals.json exists and contains eval cases with id, prompt, expected_output, and expectations fields",
+        "evals/trigger-eval.json exists with both should_trigger: true and should_trigger: false queries",
+        "The eval expectations are specific and verifiable (not vague like 'output is good')",
+        "The trigger-eval negative queries are near-misses, not obviously irrelevant topics"
+      ]
+    }
+  ]
+}

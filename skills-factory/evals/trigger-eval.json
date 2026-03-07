@@ -1,0 +1,20 @@
+[
+  {"query": "Create a new Claude Code skill for PDF processing", "should_trigger": true},
+  {"query": "I need to build a skill that helps with git commits", "should_trigger": true},
+  {"query": "Help me create a production-ready skill with evaluation", "should_trigger": true},
+  {"query": "I want to make a Claude Code skill with YAML frontmatter", "should_trigger": true},
+  {"query": "Build a skill using progressive disclosure patterns", "should_trigger": true},
+  {"query": "Create a forked subagent skill for research", "should_trigger": true},
+  {"query": "I need a skill with automated eval loops and benchmarking", "should_trigger": true},
+  {"query": "Set up evaluation-driven development for my new skill", "should_trigger": true},
+  {"query": "Optimize my skill's description for better trigger accuracy", "should_trigger": true},
+  {"query": "Help me write a Python script that validates CSV data", "should_trigger": false},
+  {"query": "Create a CLAUDE.md file for my project", "should_trigger": false},
+  {"query": "Set up a git pre-commit hook for linting", "should_trigger": false},
+  {"query": "Write a custom GPT system prompt for content creation", "should_trigger": false},
+  {"query": "Help me configure my .claude/settings.json file", "should_trigger": false},
+  {"query": "Create a new subagent definition for my pipeline", "should_trigger": false},
+  {"query": "Build a workflow automation using n8n", "should_trigger": false},
+  {"query": "Help me write documentation for my API", "should_trigger": false},
+  {"query": "Create a Claude Code command that deploys to production", "should_trigger": false}
+]

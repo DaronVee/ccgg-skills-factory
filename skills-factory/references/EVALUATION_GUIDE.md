@@ -377,4 +377,52 @@ Forked skills require extra evaluation because they run in isolation:
 
 ---
 
-**Remember:** Evaluations aren't bureaucracy—they're your defense against building the wrong thing. Start with evaluations, build minimally, let data drive expansion.
+## Automated Evaluation Tools (v3.0)
+
+The manual evaluation approach above remains valuable for initial exploration. For **systematic, repeatable evaluation**, use the automated eval infrastructure:
+
+### Eval Case Definitions
+
+Define test cases in `evals/evals.json` and trigger queries in `evals/trigger-eval.json`. See [SCHEMAS.md](SCHEMAS.md) for exact formats.
+
+### Automated Eval Loop (SKILL.md Step 6)
+
+The eval loop automates the execute-grade-compare-analyze cycle:
+
+1. **Execute**: `claude -p` subprocess runs each eval case with and without the skill
+2. **Grade**: `agents/grader.md` evaluates expectations against outputs, producing `grading.json`
+3. **Aggregate**: `scripts/aggregate_benchmark.py` computes mean/stddev/min/max across runs
+4. **Compare**: `agents/comparator.md` does blind A/B comparison between skill versions
+5. **Analyze**: `agents/analyzer.md` produces improvement suggestions
+
+All data interchange uses schemas defined in [SCHEMAS.md](SCHEMAS.md). Read it before creating or parsing any JSON output.
+
+### Description Optimization (SKILL.md Step 7)
+
+Optimize the YAML description for trigger accuracy:
+
+```bash
+py -m scripts.run_loop --eval-set evals/trigger-eval.json --skill-path /path/to/skill --max-iterations 10
+```
+
+This uses a train/test split (60/40) to prevent overfitting and selects the best description by test score.
+
+### Interactive Review
+
+- **Eval query editor**: Open `assets/eval_review.html` in a browser
+- **Full eval viewer**: Run `py -m eval-viewer.generate_review /path/to/workspace` for detailed inspection
+
+### When to Use Automated vs. Manual Evaluation
+
+| Situation | Approach |
+|-----------|----------|
+| First exploration of skill concept | Manual (this guide, Phases 1-5) |
+| Measuring with/without improvement | Automated (Step 6, benchmark.json) |
+| Tuning when skill triggers | Automated (Step 7, run_loop.py) |
+| Understanding WHY something fails | Manual observation + automated analyzer |
+| Comparing two skill versions | Automated (comparator agent, blind A/B) |
+| Quick sanity check during development | Manual (Two-Claude Methodology) |
+
+---
+
+**Remember:** Evaluations aren't bureaucracy -- they're your defense against building the wrong thing. Start with evaluations, build minimally, let data drive expansion.

@@ -1,11 +1,11 @@
 ---
 name: skills-factory
-description: Meta-skill for creating production-ready Claude Code skills using evaluation-driven development, progressive disclosure patterns, comprehensive validation, and two-Claude iterative methodology
+description: "Meta-skill for creating production-ready Claude Code skills using evaluation-driven development, automated eval loops, blind A/B comparison, benchmark aggregation, description optimization, and progressive disclosure patterns. Includes grader, comparator, and analyzer agents with schema-enforced data interchange."
 ---
 
 # Skills Factory
 
-A comprehensive meta-skill for creating, validating, and iterating on production-ready Claude Code skills.
+A comprehensive meta-skill for creating, validating, evaluating, and iterating on production-ready Claude Code skills.
 
 ## About Skills
 
@@ -24,6 +24,96 @@ Skills are filesystem-based and live in:
 **Note:** Skills follow the [Agent Skills open standard](https://agentskills.io) for cross-platform compatibility.
 
 **Context budget:** Skill descriptions consume context. Total budget is ~2% of context window (default ~16k chars). If you have many skills, keep descriptions concise or use `disable-model-invocation: true` on rarely-needed skills.
+
+---
+
+## Workspace Convention
+
+**CRITICAL**: All eval and benchmark operations use this predetermined directory layout. Scripts, agents, and viewers depend on these exact paths. Do NOT deviate.
+
+```
+<skill-workspace>/
+├── SKILL.md                          # The skill under development
+├── evals/
+│   ├── evals.json                    # Test cases (see SCHEMAS.md > evals.json)
+│   ├── trigger-eval.json             # Trigger queries (see SCHEMAS.md > trigger-eval.json)
+│   └── files/                        # Input files referenced by evals
+├── iteration-<N>/                    # One per eval cycle (iteration-0 = baseline)
+│   ├── eval-<ID>/                    # One per eval case
+│   │   ├── with_skill/               # Runs WITH the skill loaded
+│   │   │   ├── run-<M>/
+│   │   │   │   ├── outputs/          # Executor output files + metrics.json
+│   │   │   │   ├── transcript.md     # Full executor transcript
+│   │   │   │   ├── grading.json      # Grader output (SCHEMAS.md > grading.json)
+│   │   │   │   └── timing.json       # Wall clock + token counts
+│   │   │   └── ...
+│   │   └── without_skill/            # Runs WITHOUT the skill (baseline)
+│   │       └── run-<M>/
+│   │           └── (same structure)
+│   ├── benchmark.json                # Aggregated stats (SCHEMAS.md > benchmark.json)
+│   └── benchmark.md                  # Human-readable summary
+├── description-optimization/         # Trigger description tuning
+│   ├── results.json                  # run_loop.py output
+│   └── report.html                   # Visual optimization report
+└── history.json                      # Iteration progression tracker
+```
+
+**Schema reference**: All JSON formats are defined in [references/SCHEMAS.md](references/SCHEMAS.md). Read SCHEMAS.md before creating or parsing any JSON file. Using wrong field names causes silent downstream failures.
+
+---
+
+## Asset Registry
+
+All scripts, agents, templates, and references available in this skill. **Read the linked file before using each asset** — inline pointers below tell you WHERE each asset is used in the workflow.
+
+**Working directory**: All `py -m scripts.*` commands must run from the skills-factory skill directory (where this SKILL.md lives). Direct `py scripts/...` calls accept absolute paths.
+
+### Scripts
+
+| Script | Purpose | Used In |
+|--------|---------|---------|
+| `scripts/init_skill.py` | Generate new skill from template | Step 3 |
+| `scripts/comprehensive_validate.py` | Deep validation (structure, content, best practices) | Step 5 |
+| `scripts/quick_validate.py` | Fast YAML-only validation | Step 5 |
+| `scripts/package_skill.py` | Create distributable .zip | Step 8 |
+| `scripts/run_eval.py` | Spawn `claude -p` to test trigger rates | Step 6, Step 7 |
+| `scripts/run_loop.py` | Full eval-improve-re-eval optimization loop | Step 7 |
+| `scripts/improve_description.py` | LLM-powered description rewriter | Step 7 (called by run_loop) |
+| `scripts/generate_report.py` | HTML report from run_loop output | Step 7 |
+| `scripts/aggregate_benchmark.py` | Aggregate grading.json into benchmark stats | Step 6 |
+| `scripts/utils.py` | Shared utilities (parse_skill_md) | Internal |
+
+### Agents
+
+| Agent | Purpose | Used In |
+|-------|---------|---------|
+| `agents/grader.md` | Grade expectations against transcripts, extract claims | Step 6 |
+| `agents/comparator.md` | Blind A/B comparison between skill versions | Step 6 |
+| `agents/analyzer.md` | Post-hoc analysis + improvement suggestions | Step 6 |
+
+### Templates & Viewers
+
+| Asset | Purpose | Used In |
+|-------|---------|---------|
+| `assets/eval_review.html` | Interactive eval query editor | Step 5 (eval creation) |
+| `eval-viewer/viewer.html` | Full eval review UI (Outputs + Benchmark tabs) | Step 6 (review) |
+| `eval-viewer/generate_review.py` | HTTP server for interactive review | Step 6 (review) |
+
+### References
+
+| Reference | Purpose |
+|-----------|---------|
+| [SCHEMAS.md](references/SCHEMAS.md) | **All JSON schemas** — read before creating/parsing data files |
+| [FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md) | YAML configuration wizard (6-question decision tree) |
+| [SUBAGENT_PATTERNS.md](references/SUBAGENT_PATTERNS.md) | Fork patterns, agent skills loading |
+| [EVALUATION_GUIDE.md](references/EVALUATION_GUIDE.md) | Evaluation-driven development methodology |
+| [TWO_CLAUDE_METHODOLOGY.md](references/TWO_CLAUDE_METHODOLOGY.md) | Manual iterative testing (supplementary to automated evals) |
+| [WORKFLOW_PATTERNS.md](references/WORKFLOW_PATTERNS.md) | Workflow design patterns and examples |
+| [VALIDATION_PATTERNS.md](references/VALIDATION_PATTERNS.md) | Feedback loops and validation strategies |
+| [DEPLOYMENT_GUIDE.md](references/DEPLOYMENT_GUIDE.md) | Deployment and distribution guide |
+| [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) | Common issues and solutions |
+
+---
 
 ## Skill Creation Process
 
@@ -56,7 +146,7 @@ Before writing anything, deeply understand what you're building:
 Design your skill's structure before implementation:
 
 **MANDATORY - Configure Frontmatter First:**
-Before writing ANY YAML frontmatter, read and follow [references/FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md). Run through the 6-question decision guide to determine which frontmatter fields this skill needs. This ensures you collect the right context about invocation patterns, execution context, arguments, tool access, dynamic data, and hooks BEFORE generating the YAML.
+Before writing ANY YAML frontmatter, read and follow [references/FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md). Run through the 6-question decision guide to determine which frontmatter fields this skill needs.
 
 **Choose Your Pattern:**
 - **Simple skill**: SKILL.md only (~100-300 lines)
@@ -85,7 +175,7 @@ Create your skill's foundation:
 
 ```bash
 cd ~/.claude/skills  # or .claude/skills for project-specific
-python /path/to/init_skill.py my-skill-name
+py /path/to/scripts/init_skill.py my-skill-name
 ```
 
 This creates:
@@ -98,13 +188,10 @@ my-skill-name/
 ```
 
 **Post-Initialization:**
-- Run through the Frontmatter Decision Guide (Step 2) to determine which fields to configure
-- Replace ALL `TODO:` placeholders in YAML frontmatter
+- Run through the Frontmatter Decision Guide (Step 2)
+- Replace ALL placeholder markers in YAML frontmatter
 - Draft description with key trigger terms (max 1024 chars)
 - Ensure name is hyphen-case (lowercase + hyphens only)
-- Review commented optional fields and uncomment those needed
-
-**See:** Bundled `scripts/init_skill.py`
 
 ### Step 4: Design & Implement
 
@@ -156,8 +243,6 @@ argument-hint: "[research-question]"
 
 #### Invocation Control
 
-Control when and how your skill is triggered:
-
 | `disable-model-invocation` | `user-invocable` | Result |
 |---------------------------|-----------------|--------|
 | omitted (false) | omitted (true) | **Default**: Claude + user can invoke |
@@ -169,38 +254,25 @@ Control when and how your skill is triggered:
 
 #### String Substitutions
 
-Skills can accept arguments from the user:
-
 | Variable | Meaning | Example |
 |----------|---------|---------|
-| `$ARGUMENTS` | All arguments as string | `/fix-issue 42` → `$ARGUMENTS` = `"42"` |
-| `$0` or `$ARGUMENTS[0]` | First argument | `/convert file.md pdf` → `$0` = `"file.md"` |
-| `$1` or `$ARGUMENTS[1]` | Second argument | `/convert file.md pdf` → `$1` = `"pdf"` |
+| `$ARGUMENTS` | All arguments as string | `/fix-issue 42` -> `$ARGUMENTS` = `"42"` |
+| `$0` or `$ARGUMENTS[0]` | First argument | `/convert file.md pdf` -> `$0` = `"file.md"` |
+| `$1` or `$ARGUMENTS[1]` | Second argument | `/convert file.md pdf` -> `$1` = `"pdf"` |
 | `${CLAUDE_SESSION_ID}` | Current session ID | Useful for unique output paths |
 
 **Auto-append**: If `$ARGUMENTS` doesn't appear in skill content, arguments are automatically appended to the end.
 
-**Example parameterized skill:**
-```yaml
----
-name: fix-issue
-description: Fix a GitHub issue by number
-argument-hint: "[issue-number]"
----
-Look up issue $ARGUMENTS using `gh issue view $ARGUMENTS`.
-Analyze the issue, implement a fix, and create a PR.
-```
-
 #### Dynamic Context Injection
 
-Skills can inject live shell data (git status, GitHub info, system state) into their content at load time using a special syntax. Commands execute BEFORE skill content reaches Claude.
+Skills can inject live shell data (git status, GitHub info, system state) into their content at load time. Commands execute BEFORE skill content reaches Claude.
 
-**Full documentation with examples and patterns:** See [references/FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md) — Question 5: "Does this skill need dynamic data?"
+**See:** [references/FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md) -- Question 5: "Does this skill need dynamic data?"
 
 #### Advanced Patterns
 
-- **`ultrathink`**: Include this keyword in skill content to enable extended thinking mode for complex analysis
-- **Skill character budget**: Total skill descriptions use ~2% of context window. Override with `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable
+- **`ultrathink`**: Include this keyword in skill content to enable extended thinking mode
+- **Skill character budget**: Override with `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable
 - **Subagent integration**: Skills can spawn subagents (`context: fork`) or be preloaded into subagents (`skills:` field). See [references/SUBAGENT_PATTERNS.md](references/SUBAGENT_PATTERNS.md)
 
 **SKILL.md Body Guidelines:**
@@ -211,108 +283,295 @@ Skills can inject live shell data (git status, GitHub info, system state) into t
 - Keep total SKILL.md under 500 lines (ideally under 200)
 
 **Progressive Disclosure Rules:**
-- Reference files ONE level deep: `[Guide](references/guide.md)` OK
-- No nested references: `references/category/subcategory/file.md` NOT OK
-- Load scripts when needed: "Run validation: `bash scripts/validate.py`"
+- Reference files ONE level deep (e.g. `references/MY_GUIDE.md`) — OK
+- No nested references (`references/category/subcategory/file.md`) — NOT OK
+- Load scripts when needed: "Run validation: `py scripts/validate.py`"
 - Front-load critical info, defer details to references
-
-**Workflow Integration:**
-- Add validation checkpoints after key steps
-- Design feedback loops for quality assurance
-- Use scripts to automate validation (not punt to Claude)
-- Provide clear error messages with actionable fixes
 
 **See:** [references/WORKFLOW_PATTERNS.md](references/WORKFLOW_PATTERNS.md), [references/VALIDATION_PATTERNS.md](references/VALIDATION_PATTERNS.md)
 
-### Step 5: Validate & Package
+### Step 5: Validate & Create Evals
 
-Ensure quality before distribution:
+Ensure quality and prepare evaluation infrastructure:
 
-**Comprehensive Validation:**
+**5a. Comprehensive Validation:**
 ```bash
-python scripts/comprehensive_validate.py /path/to/my-skill-name
+py scripts/comprehensive_validate.py /path/to/my-skill-name
 ```
 
-This checks:
-- YAML structure and field validity (including new fields: context, agent, model, etc.)
-- Naming conventions (hyphen-case, no invalid chars)
-- Description quality (length, clarity, trigger terms)
-- Progressive disclosure (file references one-level deep)
-- Best practices (no absolute paths, TODO markers, etc.)
-- Content quality (examples present, clear structure)
-- Workflow validation (if workflows present)
-- Fork validation (if `context: fork`, checks for task instructions)
+Checks: YAML structure, naming conventions, description quality, progressive disclosure, best practices, content quality, workflow validation, fork validation.
 
-**Fix all errors and warnings before packaging.**
+**Fix all errors and warnings before proceeding.**
 
-**Package for Distribution:**
-```bash
-python scripts/package_skill.py /path/to/my-skill-name
+**5b. Create Eval Cases** (`evals/evals.json`):
+
+Design test cases that define what "working correctly" means. Read [references/SCHEMAS.md](references/SCHEMAS.md) for the `evals.json` schema.
+
+```json
+{
+  "skill_name": "my-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Realistic user prompt that should use this skill",
+      "expected_output": "Description of what success looks like",
+      "files": ["evals/files/sample-input.pdf"],
+      "expectations": [
+        "The output includes a summary section",
+        "All input data points are preserved",
+        "The format matches the specified template"
+      ]
+    }
+  ]
+}
 ```
 
-Creates: `my-skill-name.zip` ready for sharing or installation.
+**Guidelines for good expectations:**
+- Verifiable: Can be checked against actual output
+- Specific: "Output has 5 columns" not "Output is well-formatted"
+- Independent: Each expectation tests one thing
+- Non-trivial: Don't test things that always pass
 
-**See:** Bundled `scripts/comprehensive_validate.py` and `scripts/package_skill.py`
+**5c. Create Trigger Eval Queries** (`evals/trigger-eval.json`):
 
-### Step 6: Iterate Using Two-Claude Methodology
+Define when your skill SHOULD and SHOULD NOT trigger. Read [references/SCHEMAS.md](references/SCHEMAS.md) for the `trigger-eval.json` schema.
 
-Most skills require iteration to reach production quality. Use the **Two-Claude Method**:
+```json
+[
+  {"query": "Create a new Claude Code skill for PDF processing", "should_trigger": true},
+  {"query": "Help me set up a Python virtual environment", "should_trigger": false}
+]
+```
 
-**Claude A (Builder):**
-- Has the skill loaded in their environment
-- Performs realistic tasks the skill should help with
-- Documents behavior, errors, confusion points
-- Takes notes on what works and what doesn't
+**Guidelines:** 8-10 should-trigger + 8-10 should-not-trigger. Negative queries must be **near-misses** (related domain but wrong intent), not obviously irrelevant.
 
-**Claude B (Tester/Observer):**
-- Reviews Claude A's session logs and outputs
-- Analyzes where the skill succeeded vs. failed
-- Identifies improvement opportunities
-- Proposes specific edits to skill files
+**Interactive editor**: Open `assets/eval_review.html` in a browser for visual eval query editing with add/delete/toggle/export.
 
-**Iteration Cycle:**
-1. Claude A uses the skill on realistic task
-2. Observe and document behavior (what happened?)
-3. Claude B analyzes session (what should change?)
-4. Edit skill files based on findings
-5. Re-validate with comprehensive_validate.py
-6. Repeat until skill performs well consistently
+**See:** [references/EVALUATION_GUIDE.md](references/EVALUATION_GUIDE.md), [references/SCHEMAS.md](references/SCHEMAS.md)
 
-**Key Observation Points:**
-- Did Claude invoke the skill when appropriate?
-- Did the skill provide sufficient guidance?
-- Were workflows clear and easy to follow?
-- Did validation catch errors effectively?
-- What caused confusion or errors?
-- For forked skills: Did the subagent return a useful summary?
-- For `disable-model-invocation` skills: Did it correctly NOT auto-trigger?
+### Step 6: Evaluate & Iterate (Automated Eval Loop)
 
-**See:** [references/TWO_CLAUDE_METHODOLOGY.md](references/TWO_CLAUDE_METHODOLOGY.md) for complete iteration framework.
+This is the core quality loop. Run your skill against eval cases, grade results, compare versions, and iterate.
 
-### Step 7: Deploy & Distribute
+**STATE DETECTION**: Before starting, detect where you are in the process:
 
-After validation and iteration, deploy your skill so Claude can use it.
+```
+IF no iteration-* directories exist:
+    -> Start at 6a (first baseline run)
+IF iteration-N exists but has no benchmark.json:
+    -> Resume at 6c (aggregate incomplete iteration)
+IF iteration-N exists WITH benchmark.json:
+    -> Start iteration-N+1 at 6a
+IF comparison.json exists in latest iteration:
+    -> Go to 6e (analyze) or 6f (decide next action)
+```
+
+#### 6a. Execute Eval Runs
+
+For each eval case, run the skill in both configurations. Run with_skill and without_skill **in parallel** (they are independent).
+
+**Subagent prompt for executor** (use this exact template when spawning executor subagents):
+
+```
+You are an eval executor. Your task:
+
+EVAL CASE:
+- Prompt: {eval.prompt}
+- Expected: {eval.expected_output}
+- Input files: {eval.files}
+
+INSTRUCTIONS:
+1. Execute the prompt as a real user would
+2. Save all output files to: outputs/
+3. Save a metrics.json to outputs/ with tool_calls, total_tool_calls, total_steps, files_created, errors_encountered, output_chars
+4. Do NOT grade yourself — just execute faithfully
+
+SKILL CONTEXT (only for with_skill runs):
+{skill_content}
+```
+
+**Save timing data**: When each executor subagent completes, capture `total_tokens` and `duration_ms` from the task notification into `timing.json`. These values are NOT persisted anywhere else.
+
+```json
+{"total_tokens": 84852, "duration_ms": 23332, "total_duration_seconds": 23.3}
+```
+
+#### 6b. Grade Each Run
+
+For each completed run, spawn the grader agent. Run grading for all completed runs **in parallel**.
+
+**Subagent prompt for grader** (use this exact template):
+
+```
+You are an eval grader. Read agents/grader.md for your full instructions.
+
+EVAL METADATA:
+- Eval ID: {eval.id}
+- Prompt: {eval.prompt}
+- Expectations to verify:
+{expectations_list}
+
+WORKSPACE: {run_dir}
+- Read outputs/ for executor output files
+- Read transcript.md for the execution transcript
+
+OUTPUT: Write grading.json to {run_dir}/grading.json
+
+CRITICAL SCHEMA RULE: Your grading.json MUST use these exact field names in the expectations array:
+- "text" (NOT "name")
+- "passed" (NOT "met")
+- "evidence" (NOT "details")
+Read references/SCHEMAS.md > grading.json for the complete schema.
+```
+
+#### 6c. Aggregate Benchmark
+
+After ALL runs for an iteration are graded, aggregate results:
+
+```bash
+py -m scripts.aggregate_benchmark iteration-N --skill-name my-skill
+```
+
+This reads all `grading.json` files and produces:
+- `iteration-N/benchmark.json` — statistical summary (mean, stddev, min, max per metric)
+- `iteration-N/benchmark.md` — human-readable summary
+
+**Do NOT run this until every run in the iteration has a grading.json.** Partial aggregation produces misleading stats.
+
+#### 6d. Compare Versions (iteration >= 1 only)
+
+After iteration-1+, compare current vs. previous best using the blind comparator agent.
+
+**Subagent prompt for comparator** (use this exact template):
+
+```
+You are a blind comparator. Read agents/comparator.md for your full instructions.
+
+EVAL CASE:
+- Prompt: {eval.prompt}
+- Expected: {eval.expected_output}
+
+OUTPUT A (anonymized):
+{output_from_version_X}
+
+OUTPUT B (anonymized):
+{output_from_version_Y}
+
+OUTPUT: Write comparison.json to {grading_dir}/comparison.json
+Read references/SCHEMAS.md > comparison.json for the schema.
+
+IMPORTANT: You do NOT know which output used a skill. Judge purely on quality.
+```
+
+**Randomize A/B assignment** each time to prevent position bias.
+
+#### 6e. Analyze Results
+
+After comparison, spawn the analyzer agent for improvement insights.
+
+**Subagent prompt for analyzer** (use this exact template):
+
+```
+You are a post-hoc analyzer. Read agents/analyzer.md for your full instructions.
+
+COMPARISON RESULT: {comparison.json contents}
+WINNER OUTPUT: {winner's full output}
+LOSER OUTPUT: {loser's full output}
+SKILL CONTENT: {current SKILL.md}
+BENCHMARK DATA: {benchmark.json contents}
+
+OUTPUT: Write analysis.json to {grading_dir}/analysis.json
+Read references/SCHEMAS.md > analysis.json for the schema.
+
+Focus on: What specific skill instructions led to wins/losses?
+What changes would improve the skill?
+```
+
+#### 6f. Decide Next Action
+
+Based on benchmark + analysis results:
+
+| Condition | Action |
+|-----------|--------|
+| pass_rate >= 0.90 AND delta > +0.20 | Skill is strong. Proceed to Step 7 (description optimization) |
+| pass_rate >= 0.70 AND delta > 0 | Good progress. Apply analyzer suggestions, run iteration N+1 |
+| pass_rate < 0.70 OR delta <= 0 | Significant issues. Review analyzer feedback, make substantial edits |
+| 5 iterations with no improvement | Stop. Reassess skill architecture (Step 2) |
+
+**Loop termination**: Maximum 5 iterations. If pass_rate has not improved for 3 consecutive iterations, stop and reassess.
+
+#### Review Results Interactively
+
+Launch the eval viewer for detailed inspection:
+
+```bash
+py -m eval-viewer.generate_review /path/to/skill-workspace
+```
+
+Opens a browser with the full review UI (Outputs tab + Benchmark tab). Use this to inspect individual run outputs, grading details, and benchmark comparisons.
+
+**See:** [references/EVALUATION_GUIDE.md](references/EVALUATION_GUIDE.md), [references/TWO_CLAUDE_METHODOLOGY.md](references/TWO_CLAUDE_METHODOLOGY.md) (supplementary manual testing)
+
+### Step 7: Optimize Description (Trigger Accuracy)
+
+After the skill content is strong (Step 6), optimize the YAML description so Claude invokes it at the right time.
+
+**7a. Prepare trigger-eval.json** (if not done in Step 5c).
+
+**7b. Run the optimization loop:**
+
+```bash
+py -m scripts.run_loop --eval-set evals/trigger-eval.json --skill-path /path/to/my-skill --max-iterations 10 --runs-per-query 3 --verbose
+```
+
+This automatically:
+1. Splits queries into **train (60%) / test (40%)** sets (stratified by should_trigger)
+2. Evaluates current description against train set
+3. Calls `improve_description.py` to rewrite based on failures
+4. Re-evaluates the new description
+5. Repeats until convergence or max iterations
+6. Selects the best description by **test score** (not train) to prevent overfitting
+7. Generates live HTML report with auto-refresh
+
+**Output:**
+- `description-optimization/results.json` — full history of all iterations
+- `description-optimization/report.html` — visual report (open in browser)
+
+**7c. Generate final report** (if not auto-generated):
+
+```bash
+py -m scripts.generate_report description-optimization/results.json -o description-optimization/report.html --skill-name my-skill
+```
+
+**7d. Apply the winning description:**
+
+Update the YAML frontmatter `description` field in SKILL.md with the best description from `results.json > best_description`.
+
+**Anti-pattern**: Do NOT manually tune the description without re-running the eval loop. Manual edits that improve one trigger often break others.
+
+### Step 8: Deploy & Distribute
+
+After validation, evaluation, and description optimization, deploy your skill.
 
 **Deploy to Claude Code:**
 
 For personal use (across all projects):
 ```bash
-python scripts/package_skill.py my-skill --install personal
+py scripts/package_skill.py my-skill --install personal
 ```
-Installs to `~/.claude/skills/my-skill/` - immediately available in all Claude Code sessions.
+Installs to `~/.claude/skills/my-skill/` - immediately available in all sessions.
 
 For team/project use (shared via git):
 ```bash
-python scripts/package_skill.py my-skill --install project
+py scripts/package_skill.py my-skill --install project
 git add .claude/skills/my-skill/
 git commit -m "Add my-skill for team workflows"
 git push
 ```
-Team members get skill automatically on `git pull`.
 
 **Deploy to Claude.ai / Claude Desktop:**
 ```bash
-python scripts/package_skill.py my-skill --package
+py scripts/package_skill.py my-skill --package
 ```
 Upload generated `my-skill.zip` via Settings > Features.
 
@@ -324,86 +583,101 @@ Upload via `/v1/skills` endpoint for organization-wide availability.
 - Claude.ai/Desktop: Check Settings > Features shows skill
 - API: List skills via API endpoint
 
-**Important:** Skills **do not sync across surfaces**. Must deploy separately to each platform (Code, .ai, Desktop, API).
+**Important:** Skills **do not sync across surfaces**. Must deploy separately to each platform.
 
-**See:** [references/DEPLOYMENT_GUIDE.md](references/DEPLOYMENT_GUIDE.md) for complete deployment workflows, surface-specific instructions, and team distribution strategies.
+**See:** [references/DEPLOYMENT_GUIDE.md](references/DEPLOYMENT_GUIDE.md)
+
+---
+
+## Anti-Patterns
+
+**Do NOT do these:**
+
+- **Skip schema validation**: Never create grading.json, benchmark.json, or comparison.json without first reading [SCHEMAS.md](references/SCHEMAS.md). Wrong field names cause silent failures in the viewer and aggregation scripts.
+- **Run aggregate before all runs complete**: Partial benchmarks produce misleading statistics.
+- **Manually tune descriptions without eval loop**: Manual edits that fix one trigger break others. Always re-run `run_loop.py`.
+- **Use train score to select best description**: Always use test score. Train score overfits.
+- **Grade your own output**: The executor must NOT self-grade. Grading is a separate agent with separate context.
+- **Forget timing data**: Capture `total_tokens` and `duration_ms` from task notifications immediately. They cannot be recovered later.
+- **Nest reference files**: Keep references ONE level deep. No `references/category/subcategory/`.
+- **Inline everything in SKILL.md**: Use progressive disclosure. SKILL.md is the router, not the encyclopedia.
+
+---
 
 ## Troubleshooting
 
 **Common Issues:**
-- "Claude doesn't use my skill" → Check description triggers, YAML validity, `disable-model-invocation` not accidentally set
-- "Skill loaded but ignored" → Add concrete examples, improve clarity
-- "Skill triggers when it shouldn't" → Use `disable-model-invocation: true`
-- "Validation failing" → Run comprehensive_validate.py for specific errors
-- "Skill too complex" → Apply progressive disclosure, move content to references
-- "Skill created but not available" → Check installation location, use --install flag
-- "Skill works in Code but not .ai" → Skills don't sync, must upload separately
-- "Team doesn't have skill" → Commit to git (project) or share zip (other surfaces)
-- "Some skills not loading" → Character budget exceeded, shorten descriptions
-- "Forked skill returns poor results" → Ensure body has task instructions, not just reference material
+- "Claude doesn't use my skill" -> Check description triggers, YAML validity, `disable-model-invocation` not accidentally set
+- "Skill loaded but ignored" -> Add concrete examples, improve clarity, run Step 7
+- "Skill triggers when it shouldn't" -> Use `disable-model-invocation: true` or optimize description (Step 7)
+- "Validation failing" -> Run `py scripts/comprehensive_validate.py` for specific errors
+- "Skill too complex" -> Apply progressive disclosure, move content to references
+- "Grading.json has wrong fields" -> Read SCHEMAS.md. Must use `text`/`passed`/`evidence`, NOT `name`/`met`/`details`
+- "Benchmark shows all zeros" -> Check `runs[].result` is nested object, not flat fields. Check `configuration` not `config`
+- "Eval viewer shows empty" -> Verify workspace directory structure matches convention above
+- "Description optimization not improving" -> Check trigger-eval.json quality: are negative queries near-misses?
+- "Forked skill returns poor results" -> Ensure body has task instructions, not just reference material
+- "Some skills not loading" -> Character budget exceeded, shorten descriptions
 
 **See:** [references/TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) for comprehensive troubleshooting guide.
 
-## Reference Documentation
-
-- **[FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md)** - Intelligent YAML configuration wizard (6-question decision tree)
-- **[SUBAGENT_PATTERNS.md](references/SUBAGENT_PATTERNS.md)** - Skill/subagent integration (fork patterns, agent skills loading)
-- **[EVALUATION_GUIDE.md](references/EVALUATION_GUIDE.md)** - Evaluation-driven development methodology
-- **[TWO_CLAUDE_METHODOLOGY.md](references/TWO_CLAUDE_METHODOLOGY.md)** - Complete iterative testing framework
-- **[WORKFLOW_PATTERNS.md](references/WORKFLOW_PATTERNS.md)** - Workflow design patterns and examples
-- **[VALIDATION_PATTERNS.md](references/VALIDATION_PATTERNS.md)** - Feedback loops and validation strategies
-- **[DEPLOYMENT_GUIDE.md](references/DEPLOYMENT_GUIDE.md)** - Complete deployment and distribution guide
-- **[TROUBLESHOOTING.md](references/TROUBLESHOOTING.md)** - Common issues and solutions
+---
 
 ## Example Skills
 
-See `references/examples/` for annotated example skills demonstrating best practices:
-- **simple-skill/** - Minimal viable skill (commit-helper)
-- **standard-skill/** - Moderate complexity with references (pdf-processor)
-- **complex-skill/** - Full progressive disclosure (data-analysis)
+Skills created using this factory serve as living examples. Run `py scripts/comprehensive_validate.py /path/to/any-skill` to see how validation checks apply in practice. For architecture pattern examples, see [WORKFLOW_PATTERNS.md](references/WORKFLOW_PATTERNS.md) and [FRONTMATTER_DECISION_GUIDE.md](references/FRONTMATTER_DECISION_GUIDE.md).
 
-Each example includes `ANNOTATIONS.md` explaining architectural decisions.
-
-## Scripts
-
-- **init_skill.py** - Generate new skill from template
-- **comprehensive_validate.py** - Deep validation (structure, content, best practices)
-- **package_skill.py** - Create distributable .zip file
+---
 
 ## Version History
 
+**v3.0.1** (2026-03-07)
+- Self-evaluation using own methodology (Steps 5a-5c)
+- Fixed: broken `references/examples/` directory reference (CRITICAL)
+- Fixed: missing working directory requirement for `py -m scripts.*` commands (CRITICAL)
+- Fixed: false-positive validation errors (TODO marker in instruction text, example markdown link)
+- Added: `evals/evals.json` with 5 eval cases (happy path, forked skill, complex skill, failure case, meta-eval)
+- Added: `evals/trigger-eval.json` with 18 trigger queries (9 positive, 9 near-miss negatives)
+- Validation: comprehensive_validate.py passes with 0 errors on skills-factory itself
+
+**v3.0.0** (2026-03-07)
+- Automated eval loop: run_eval.py, run_loop.py, improve_description.py, generate_report.py, aggregate_benchmark.py
+- Agent-based grading: grader.md, comparator.md (blind A/B), analyzer.md (post-hoc)
+- Schema-enforced data interchange: SCHEMAS.md with 10 JSON schemas (evals, grading, benchmark, comparison, analysis, etc.)
+- Description optimization: train/test split, overfitting prevention, convergence detection
+- Interactive eval tools: eval_review.html (query editor), eval-viewer (review UI with Outputs + Benchmark tabs)
+- Orchestration contract: state detection, workspace convention, subagent prompt templates, parallelism rules, loop termination
+- Anti-pattern blocks: explicit "do NOT" section preventing common failures
+- Shared utilities: utils.py (parse_skill_md), scripts/__init__.py
+- Windows adaptation: `py` command, UTF-8 encoding, ASCII status markers, no select() on pipes
+- New Step 5b-5c: eval creation integrated into validation step
+- New Step 6: automated eval-grade-compare-analyze loop (replaces manual Two-Claude as primary)
+- New Step 7: description optimization with automated trigger testing
+- Two-Claude Methodology demoted to supplementary reference (still useful for manual exploration)
+- Updated description in YAML frontmatter to reflect v3.0 capabilities
+
 **v2.0.0** (2026-02-09)
 - Complete frontmatter reference: all 11 official YAML fields documented
-- Intelligent Frontmatter Decision Guide: 6-question wizard for configuring new skills
+- Intelligent Frontmatter Decision Guide: 6-question wizard
 - Subagent integration patterns: context: fork, agent types, skills field in agents
 - Invocation control: disable-model-invocation, user-invocable, decision matrix
 - String substitutions: $ARGUMENTS, $N, ${CLAUDE_SESSION_ID}
-- Dynamic context injection: exclamation-backtick syntax (examples moved to reference)
-- Advanced patterns: ultrathink, character budget, argument patterns
-- Fixed priority resolution order: enterprise > personal > project
-- Fixed allowed-tools format: comma-separated string (not YAML list)
-- Updated name/description status: recommended (not required, defaults exist)
-- New reference: FRONTMATTER_DECISION_GUIDE.md
-- New reference: SUBAGENT_PATTERNS.md
+- Dynamic context injection
+- New references: FRONTMATTER_DECISION_GUIDE.md, SUBAGENT_PATTERNS.md
 - Updated validation script with new field recognition
 
 **v1.1.0** (2025-10-19)
 - Added deployment layer with cross-surface support
-- Enhanced package_skill.py with --install flag (personal/project)
-- Enhanced init_skill.py with interactive location prompt
-- Created DEPLOYMENT_GUIDE.md reference (~4,000 words)
-- Added deployment troubleshooting (Issues 9-12)
-- Complete end-to-end workflow: creation -> deployment -> distribution
+- Enhanced package_skill.py with --install flag
+- Created DEPLOYMENT_GUIDE.md reference
 
 **v1.0.0** (2025-10-19)
 - Initial production release
 - Evaluation-driven development framework
 - Two-Claude iterative methodology
 - Comprehensive validation script
-- Workflow patterns (Sequential, Checklist, Conditional, Iterative)
-- Validation patterns (Script-based, Reference-based, Plan-validate-execute, Multi-stage)
+- Workflow and validation patterns
 - Progressive disclosure implementation
-- Troubleshooting guide (8 common issues)
 
 ---
 
